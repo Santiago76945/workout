@@ -1,0 +1,2771 @@
+// src/types/goal.ts
+
+export type WeeklyGoal = {
+    targetSessionsPerWeek: number;
+    updatedAt: string;
+};// src/types/stats.ts
+
+export type TrainingSession = {
+  id: string;
+  completedAt: string;
+  routineId: string;
+  routineTitle: string;
+};
+
+export type TrainingStats = {
+  sessions: TrainingSession[];
+};
+
+export type WeeklyStats = {
+  weekKey: string;
+  completedSessions: number;
+  goalTarget: number;
+  isGoalCompleted: boolean;
+};
+
+export type GoalStreakStats = {
+  currentWeeklyStreak: number;
+  longestWeeklyStreak: number;
+};// src/types/exercise.ts
+
+export type ExerciseId =
+  | "squats"
+  | "push-ups"
+  | "pilates-ring-row"
+  | "chair-dips"
+  | "pilates-ring-overhead-press"
+  | "pilates-ring-front-press"
+  | "plank"
+  | "standing-pilates-ring-knee-press"
+  | "standing-calf-raises";
+
+export type ExercisePosition = {
+  id: string;
+  title: string;
+  description: string[];
+  imagePath: string;
+};
+
+export type ExerciseCategory =
+  | "legs"
+  | "chest"
+  | "back"
+  | "arms"
+  | "shoulders"
+  | "core"
+  | "full-body";
+
+export type ExerciseEquipment =
+  | "bodyweight"
+  | "chair"
+  | "pilates-ring";
+
+export type Exercise = {
+  id: ExerciseId;
+  title: string;
+  shortTitle: string;
+  category: ExerciseCategory;
+  equipment: ExerciseEquipment[];
+  positions: ExercisePosition[];
+};// src/types/routine.ts
+
+import type { Exercise, ExerciseId } from "@/types/exercise";
+
+export type RoutineRepetitionTarget = {
+  type: "repetitions";
+  minReps: number;
+  maxReps: number;
+  unitLabel: string;
+};
+
+export type RoutineDurationTarget = {
+  type: "duration";
+  minSeconds: number;
+  maxSeconds: number;
+};
+
+export type RoutineTarget = RoutineRepetitionTarget | RoutineDurationTarget;
+
+export type RoutineItem = {
+  id: string;
+  exerciseId: ExerciseId;
+  sets: number;
+  target: RoutineTarget;
+  restSeconds: number;
+};
+
+export type Routine = {
+  id: string;
+  title: string;
+  description: string;
+  idealSessionsPerWeek: number;
+  estimatedDurationMinutes: {
+    min: number;
+    max: number;
+  };
+  defaultRestSecondsRange: {
+    minSeconds: number;
+    maxSeconds: number;
+  };
+  items: RoutineItem[];
+};
+
+export type RoutineExerciseStep = {
+  id: string;
+  type: "exercise";
+  exerciseId: ExerciseId;
+  exercise: Exercise;
+  setNumber: number;
+  totalSets: number;
+  target: RoutineTarget;
+};
+
+export type RoutineRestStep = {
+  id: string;
+  type: "rest";
+  exerciseId: ExerciseId;
+  exercise: Exercise;
+  durationSeconds: number;
+  afterSetNumber: number;
+  totalSets: number;
+};
+
+export type RoutineStep = RoutineExerciseStep | RoutineRestStep;
+
+export type RoutineStepType = RoutineStep["type"];
+
+export type RoutinePlayerStatus = "idle" | "active" | "complete";// src/app/goals/page.tsx
+
+import { GoalSettings } from "@/components/goals/GoalSettings";
+
+export default function GoalsPage() {
+  return <GoalSettings />;
+}// src/app/routine/page.tsx
+
+import { RoutinePlayer } from "@/components/routine/RoutinePlayer";
+
+export default function RoutinePage() {
+  return <RoutinePlayer />;
+}// src/app/layout.tsx
+
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "Exercise Routine App",
+  description: "Simple exercise routine tracker."
+};
+
+type RootLayoutProps = {
+  children: ReactNode;
+};
+
+export default function RootLayout({ children }: RootLayoutProps) {
+  return (
+    <html lang="es">
+      <body>{children}</body>
+    </html>
+  );
+}// src/app/page.tsx
+
+import { MainMenu } from "@/components/menu/MainMenu";
+
+export default function HomePage() {
+  return <MainMenu />;
+}/* src/app/globals.css */
+
+:root {
+    --background: #f4f0e8;
+    --foreground: #1f1f1f;
+    --muted: #6f6a61;
+    --surface: #fffaf1;
+    --surface-strong: #ffffff;
+    --border: rgba(31, 31, 31, 0.12);
+    --primary: #1f1f1f;
+    --primary-foreground: #ffffff;
+    --danger: #b42318;
+    --success: #157f3b;
+
+    --radius-sm: 0.5rem;
+    --radius-md: 0.875rem;
+    --radius-lg: 1.25rem;
+    --radius-xl: 1.75rem;
+
+    --shadow-soft: 0 18px 50px rgba(31, 31, 31, 0.12);
+    --max-app-width: 480px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    min-height: 100%;
+    background: var(--background);
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    color: var(--foreground);
+    background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.85), transparent 32rem),
+        var(--background);
+    font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+img {
+    display: block;
+    max-width: 100%;
+}
+
+main {
+    width: min(100%, var(--max-app-width));
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}// src/app/stats/page.tsx
+
+import { StatsDashboard } from "@/components/stats/StatsDashboard";
+
+export default function StatsPage() {
+  return <StatsDashboard />;
+}### Comandos
+
+# Unificar todo
+
+find src \
+  ! -path "src/content/*" \
+  \( -name "*.ts" -o -name "*.tsx" -o -name "*.css" -o -name "*.json" -o -name "*.md" \) \
+  ! -name "*.d.ts" \
+  -type f \
+  -print0 | xargs -0 cat > unificadoCodigo.cadmora.txt
+
+# Unificar algunos files
+
+  cat \
+"src/app/as... ejemplo 1
+"src/app/glo... ejemplo 2
+"src/components/Ba... ejemplo 3
+> admin-ba...ejemplo.txt
+
+# Traer archivos de la nube
+git fetch origin
+git reset --hard origin/main
+
+# Regresar todo al ultimo commit
+git reset --hard HEAD
+
+# Diff de hace 2 commits atras
+git show HEAD~2 --patch > diff-head-2.txt
+
+# Traer un archivo viejo a la raiz como txt
+git show ee8328c:src/types/user.ts > user-ee8328c-working.txt
+
+# Estado actual vs ultimo commit
+{
+  echo "===== GIT STATUS ====="
+  git status --short
+
+  echo
+  echo "===== DIFF STAT VS LAST COMMIT ====="
+  git diff --stat HEAD
+
+  echo
+  echo "===== FULL DIFF VS LAST COMMIT ====="
+  git diff HEAD
+
+  echo
+  echo "===== UNTRACKED FILES CONTENT ====="
+  git ls-files --others --exclude-standard | while IFS= read -r file; do
+    echo
+    echo "===== UNTRACKED FILE: $file ====="
+    sed -n '1,240p' "$file"
+  done
+} > estado-actual-vs-ultimo-commit.txt
+
+# Aplicar cambios en capacitor ios
+
+npx cap sync ios
+
+# Code check
+npm run typecheck
+npm run lint 
+npm run check // src/components/goals/GoalSettings.tsx
+
+"use client";
+
+import Link from "next/link";
+import type { CSSProperties } from "react";
+import { useEffect, useState } from "react";
+
+import {
+  getWeeklyGoal,
+  saveWeeklyGoalTarget
+} from "@/lib/storage/goalStorage";
+import type { WeeklyGoal } from "@/types/goal";
+
+const styles = {
+  wrapper: {
+    display: "grid",
+    minHeight: "100vh",
+    alignContent: "center",
+    gap: "1rem"
+  },
+  topBar: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "1rem"
+  },
+  backLink: {
+    color: "var(--muted)",
+    fontSize: "0.9rem",
+    fontWeight: 800
+  },
+  title: {
+    margin: 0,
+    fontSize: "1.7rem",
+    letterSpacing: "-0.05em"
+  },
+  card: {
+    display: "grid",
+    gap: "1rem",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-xl)",
+    background: "var(--surface)",
+    padding: "1rem",
+    boxShadow: "var(--shadow-soft)"
+  },
+  label: {
+    display: "grid",
+    gap: "0.45rem",
+    color: "var(--muted)",
+    fontSize: "0.88rem",
+    fontWeight: 850
+  },
+  input: {
+    minHeight: "3.2rem",
+    width: "100%",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    background: "rgba(255, 255, 255, 0.62)",
+    color: "var(--foreground)",
+    padding: "0 0.9rem",
+    fontSize: "1.1rem",
+    fontWeight: 900
+  },
+  button: {
+    minHeight: "3.3rem",
+    border: 0,
+    borderRadius: "999px",
+    background: "var(--primary)",
+    color: "var(--primary-foreground)",
+    fontWeight: 900
+  },
+  current: {
+    margin: 0,
+    color: "var(--muted)",
+    lineHeight: 1.5
+  },
+  strong: {
+    color: "var(--foreground)",
+    fontWeight: 950
+  }
+} satisfies Record<string, CSSProperties>;
+
+export function GoalSettings() {
+  const [goal, setGoal] = useState<WeeklyGoal>(() => getWeeklyGoal());
+  const [targetSessionsPerWeek, setTargetSessionsPerWeek] = useState(
+    goal.targetSessionsPerWeek
+  );
+
+  useEffect(() => {
+    const storedGoal = getWeeklyGoal();
+
+    setGoal(storedGoal);
+    setTargetSessionsPerWeek(storedGoal.targetSessionsPerWeek);
+  }, []);
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+
+    const updatedGoal = saveWeeklyGoalTarget(targetSessionsPerWeek);
+
+    setGoal(updatedGoal);
+    setTargetSessionsPerWeek(updatedGoal.targetSessionsPerWeek);
+  }
+
+  return (
+    <main style={styles.wrapper}>
+      <header style={styles.topBar}>
+        <Link href="/" style={styles.backLink}>
+          Volver
+        </Link>
+        <h1 style={styles.title}>Objetivo</h1>
+      </header>
+
+      <form style={styles.card} onSubmit={handleSubmit}>
+        <p style={styles.current}>
+          Objetivo actual:{" "}
+          <span style={styles.strong}>
+            {goal.targetSessionsPerWeek} entrenamientos por semana
+          </span>
+        </p>
+
+        <label style={styles.label}>
+          Entrenamientos por semana
+          <input
+            type="number"
+            min={1}
+            max={7}
+            step={1}
+            value={targetSessionsPerWeek}
+            style={styles.input}
+            onChange={(event) => {
+              setTargetSessionsPerWeek(Number(event.target.value));
+            }}
+          />
+        </label>
+
+        <button type="submit" style={styles.button}>
+          Guardar objetivo
+        </button>
+      </form>
+    </main>
+  );
+}// src/components/routine/RestTimer.tsx
+
+"use client";
+
+import type { CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
+
+type RestTimerProps = {
+  durationSeconds: number;
+  onTick: (remainingSeconds: number) => void;
+  onComplete: () => void;
+};
+
+const styles = {
+  timer: {
+    display: "grid",
+    minHeight: "8.5rem",
+    width: "8.5rem",
+    placeItems: "center",
+    border: "1px solid var(--border)",
+    borderRadius: "999px",
+    background: "rgba(255, 255, 255, 0.65)",
+    boxShadow: "0 12px 35px rgba(31, 31, 31, 0.08)"
+  },
+  value: {
+    margin: 0,
+    fontSize: "3rem",
+    fontWeight: 950,
+    letterSpacing: "-0.08em"
+  },
+  label: {
+    margin: "-1.8rem 0 0",
+    color: "var(--muted)",
+    fontSize: "0.78rem",
+    fontWeight: 900,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase"
+  }
+} satisfies Record<string, CSSProperties>;
+
+export function RestTimer({
+  durationSeconds,
+  onTick,
+  onComplete
+}: RestTimerProps) {
+  const [remainingSeconds, setRemainingSeconds] = useState(durationSeconds);
+  const hasCompletedRef = useRef(false);
+
+  useEffect(() => {
+    setRemainingSeconds(durationSeconds);
+    onTick(durationSeconds);
+    hasCompletedRef.current = false;
+  }, [durationSeconds, onTick]);
+
+  useEffect(() => {
+    if (remainingSeconds <= 0) {
+      if (!hasCompletedRef.current) {
+        hasCompletedRef.current = true;
+        onComplete();
+      }
+
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setRemainingSeconds((currentRemainingSeconds) => {
+        const nextRemainingSeconds = Math.max(currentRemainingSeconds - 1, 0);
+
+        onTick(nextRemainingSeconds);
+
+        return nextRemainingSeconds;
+      });
+    }, 1000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [remainingSeconds, onComplete, onTick]);
+
+  return (
+    <div style={styles.timer} aria-label={`Descanso: ${remainingSeconds}`}>
+      <p style={styles.value}>{remainingSeconds}</p>
+      <p style={styles.label}>segundos</p>
+    </div>
+  );
+}// src/components/routine/RoutinePlayer.tsx
+
+"use client";
+
+import Link from "next/link";
+import type { CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+import { ExerciseCard } from "@/components/routine/ExerciseCard";
+import { RoutineComplete } from "@/components/routine/RoutineComplete";
+import { defaultRoutine } from "@/data/routines";
+import { buildRoutineSteps } from "@/lib/routine/buildRoutineSteps";
+import {
+  getCurrentRoutineStep,
+  getNextRoutineStep,
+  getRoutineProgressPercentage,
+  getStepCounterLabel,
+  isLastStep,
+  isRoutineComplete,
+  shouldFlipExerciseCard
+} from "@/lib/routine/routineProgress";
+import { registerCompletedTrainingSession } from "@/lib/storage/trainingStatsStorage";
+
+const styles = {
+  wrapper: {
+    display: "grid",
+    alignContent: "center",
+    gap: "1rem",
+    minHeight: "100vh"
+  },
+  topBar: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "1rem"
+  },
+  backLink: {
+    color: "var(--muted)",
+    fontSize: "0.9rem",
+    fontWeight: 800
+  },
+  title: {
+    margin: 0,
+    fontSize: "1.35rem",
+    letterSpacing: "-0.04em"
+  },
+  progressOuter: {
+    overflow: "hidden",
+    height: "0.6rem",
+    borderRadius: "999px",
+    background: "rgba(31, 31, 31, 0.1)"
+  },
+  progressInner: {
+    height: "100%",
+    borderRadius: "999px",
+    background: "var(--primary)",
+    transition: "width 180ms ease"
+  }
+} satisfies Record<string, CSSProperties>;
+
+export function RoutinePlayer() {
+  const steps = useMemo(() => buildRoutineSteps(defaultRoutine), []);
+  const timeoutRef = useRef<number | null>(null);
+
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [isFlipping, setIsFlipping] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
+
+  const currentStep = getCurrentRoutineStep(steps, currentStepIndex);
+  const progressPercentage = getRoutineProgressPercentage(
+    steps,
+    currentStepIndex
+  );
+  const stepCounterLabel = getStepCounterLabel(steps, currentStepIndex);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current !== null) {
+        window.clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  function completeRoutine(): void {
+    registerCompletedTrainingSession({
+      routineId: defaultRoutine.id,
+      routineTitle: defaultRoutine.title
+    });
+
+    setCurrentStepIndex(steps.length);
+    setIsComplete(true);
+  }
+
+  function moveToStep(nextStepIndex: number): void {
+    setCurrentStepIndex(nextStepIndex);
+  }
+
+  function handleConfirmStep(): void {
+    if (isComplete || isRoutineComplete(steps, currentStepIndex)) {
+      return;
+    }
+
+    if (isLastStep(steps, currentStepIndex)) {
+      completeRoutine();
+      return;
+    }
+
+    const nextStepIndex = currentStepIndex + 1;
+    const nextStep = getNextRoutineStep(steps, currentStepIndex);
+    const shouldFlip = shouldFlipExerciseCard(currentStep, nextStep);
+
+    if (!shouldFlip) {
+      moveToStep(nextStepIndex);
+      return;
+    }
+
+    setIsFlipping(true);
+
+    timeoutRef.current = window.setTimeout(() => {
+      moveToStep(nextStepIndex);
+      setIsFlipping(false);
+    }, 260);
+  }
+
+  function handleRestartRoutine(): void {
+    setCurrentStepIndex(0);
+    setIsComplete(false);
+    setIsFlipping(false);
+  }
+
+  if (isComplete || !currentStep) {
+    return (
+      <main style={styles.wrapper}>
+        <RoutineComplete onRestart={handleRestartRoutine} />
+      </main>
+    );
+  }
+
+  return (
+    <main style={styles.wrapper}>
+      <header style={styles.topBar}>
+        <Link href="/" style={styles.backLink}>
+          Volver
+        </Link>
+        <h1 style={styles.title}>{defaultRoutine.title}</h1>
+      </header>
+
+      <div
+        style={styles.progressOuter}
+        aria-label={`Progreso ${progressPercentage}%`}
+      >
+        <div
+          style={{
+            ...styles.progressInner,
+            width: `${progressPercentage}%`
+          }}
+        />
+      </div>
+
+      <ExerciseCard
+        step={currentStep}
+        stepCounterLabel={stepCounterLabel}
+        progressPercentage={progressPercentage}
+        isFlipping={isFlipping}
+        onConfirm={handleConfirmStep}
+      />
+    </main>
+  );
+}// src/components/routine/ExerciseCard.tsx
+
+"use client";
+
+import type { CSSProperties } from "react";
+import { useEffect, useState } from "react";
+
+import { ExerciseImageCarousel } from "@/components/routine/ExerciseImageCarousel";
+import { RestTimer } from "@/components/routine/RestTimer";
+import { RoutineStepText } from "@/components/routine/RoutineStepText";
+import type { RoutineStep } from "@/types/routine";
+
+type ExerciseCardProps = {
+  step: RoutineStep;
+  stepCounterLabel: string;
+  progressPercentage: number;
+  isFlipping: boolean;
+  onConfirm: () => void;
+};
+
+const styles = {
+  card: {
+    display: "flex",
+    maxHeight: "80vh",
+    minHeight: "80vh",
+    flexDirection: "column",
+    gap: "1rem",
+    overflowY: "auto",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-xl)",
+    background: "var(--surface)",
+    padding: "1rem",
+    boxShadow: "var(--shadow-soft)",
+    transformStyle: "preserve-3d",
+    transition: "transform 260ms ease, opacity 260ms ease"
+  },
+  cardFlipping: {
+    transform: "rotateY(88deg) scale(0.98)",
+    opacity: 0.7
+  },
+  header: {
+    display: "grid",
+    gap: "0.35rem"
+  },
+  counter: {
+    margin: 0,
+    color: "var(--muted)",
+    fontSize: "0.78rem",
+    fontWeight: 900,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase"
+  },
+  titleRow: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: "1rem"
+  },
+  title: {
+    margin: 0,
+    fontSize: "1.6rem",
+    lineHeight: 1.1,
+    letterSpacing: "-0.055em"
+  },
+  setPill: {
+    flexShrink: 0,
+    border: "1px solid var(--border)",
+    borderRadius: "999px",
+    background: "rgba(255, 255, 255, 0.56)",
+    padding: "0.45rem 0.7rem",
+    fontSize: "0.78rem",
+    fontWeight: 900
+  },
+  content: {
+    display: "grid",
+    gap: "1rem"
+  },
+  button: {
+    minHeight: "3.4rem",
+    width: "100%",
+    border: 0,
+    borderRadius: "999px",
+    background: "var(--primary)",
+    color: "var(--primary-foreground)",
+    fontSize: "1rem",
+    fontWeight: 900
+  },
+  timerArea: {
+    display: "grid",
+    justifyItems: "center",
+    gap: "0.5rem"
+  }
+} satisfies Record<string, CSSProperties>;
+
+export function ExerciseCard({
+  step,
+  stepCounterLabel,
+  progressPercentage,
+  isFlipping,
+  onConfirm
+}: ExerciseCardProps) {
+  const [remainingRestSeconds, setRemainingRestSeconds] = useState(
+    step.type === "rest" ? step.durationSeconds : 0
+  );
+  const [isRestComplete, setIsRestComplete] = useState(step.type !== "rest");
+
+  useEffect(() => {
+    if (step.type === "rest") {
+      setRemainingRestSeconds(step.durationSeconds);
+      setIsRestComplete(false);
+      return;
+    }
+
+    setRemainingRestSeconds(0);
+    setIsRestComplete(true);
+  }, [step]);
+
+  const isRestStep = step.type === "rest";
+  const isConfirmDisabled = isRestStep && !isRestComplete;
+
+  const buttonLabel = isRestStep
+    ? isRestComplete
+      ? "Confirmar descanso"
+      : "Esperá a que termine el descanso"
+    : "Confirmar serie";
+
+  return (
+    <section
+      style={{
+        ...styles.card,
+        ...(isFlipping ? styles.cardFlipping : {})
+      }}
+      aria-label={`Ejercicio actual. ${stepCounterLabel}. ${progressPercentage}% completado.`}
+    >
+      <header style={styles.header}>
+        <p style={styles.counter}>{stepCounterLabel}</p>
+
+        <div style={styles.titleRow}>
+          <h2 style={styles.title}>{step.exercise.title}</h2>
+
+          <span style={styles.setPill}>
+            {step.type === "exercise"
+              ? `Serie ${step.setNumber}/${step.totalSets}`
+              : `Descanso ${step.afterSetNumber}/${step.totalSets}`}
+          </span>
+        </div>
+      </header>
+
+      <div style={styles.content}>
+        <ExerciseImageCarousel positions={step.exercise.positions} />
+
+        <RoutineStepText
+          step={step}
+          restSecondsRemaining={remainingRestSeconds}
+        />
+
+        {isRestStep ? (
+          <div style={styles.timerArea}>
+            <RestTimer
+              key={step.id}
+              durationSeconds={step.durationSeconds}
+              onTick={setRemainingRestSeconds}
+              onComplete={() => {
+                setIsRestComplete(true);
+              }}
+            />
+          </div>
+        ) : null}
+
+        <button
+          type="button"
+          style={styles.button}
+          onClick={onConfirm}
+          disabled={isConfirmDisabled}
+        >
+          {buttonLabel}
+        </button>
+      </div>
+    </section>
+  );
+}// src/components/routine/RoutineComplete.tsx
+
+"use client";
+
+import Link from "next/link";
+import type { CSSProperties } from "react";
+
+type RoutineCompleteProps = {
+  onRestart: () => void;
+};
+
+const styles = {
+  card: {
+    display: "grid",
+    gap: "1rem",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-xl)",
+    background: "var(--surface)",
+    padding: "1rem",
+    boxShadow: "var(--shadow-soft)",
+    textAlign: "center"
+  },
+  title: {
+    margin: 0,
+    fontSize: "2rem",
+    letterSpacing: "-0.06em"
+  },
+  text: {
+    margin: 0,
+    color: "var(--muted)",
+    lineHeight: 1.5
+  },
+  button: {
+    minHeight: "3.3rem",
+    border: 0,
+    borderRadius: "999px",
+    background: "var(--primary)",
+    color: "var(--primary-foreground)",
+    fontWeight: 900
+  },
+  link: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "3.2rem",
+    border: "1px solid var(--border)",
+    borderRadius: "999px",
+    background: "rgba(255, 255, 255, 0.55)",
+    fontWeight: 900
+  }
+} satisfies Record<string, CSSProperties>;
+
+export function RoutineComplete({ onRestart }: RoutineCompleteProps) {
+  return (
+    <section style={styles.card}>
+      <h1 style={styles.title}>Rutina completada</h1>
+      <p style={styles.text}>
+        Se guardó este entrenamiento en tus estadísticas locales.
+      </p>
+
+      <button type="button" style={styles.button} onClick={onRestart}>
+        Repetir rutina
+      </button>
+
+      <Link href="/stats" style={styles.link}>
+        Ver estadísticas
+      </Link>
+
+      <Link href="/" style={styles.link}>
+        Volver al menú
+      </Link>
+    </section>
+  );
+}// src/components/routine/RoutineStepText.tsx
+
+import type { CSSProperties } from "react";
+
+import {
+  getRoutineExerciseInstruction,
+  getRoutineRestInstruction
+} from "@/lib/routine/formatRoutineTarget";
+import type { RoutineStep } from "@/types/routine";
+
+type RoutineStepTextProps = {
+  step: RoutineStep;
+  restSecondsRemaining: number;
+};
+
+const styles = {
+  box: {
+    display: "grid",
+    gap: "0.35rem",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    background: "rgba(255, 255, 255, 0.48)",
+    padding: "0.9rem"
+  },
+  label: {
+    margin: 0,
+    color: "var(--muted)",
+    fontSize: "0.78rem",
+    fontWeight: 900,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase"
+  },
+  text: {
+    margin: 0,
+    fontSize: "1.05rem",
+    fontWeight: 850,
+    lineHeight: 1.35
+  }
+} satisfies Record<string, CSSProperties>;
+
+export function RoutineStepText({
+  step,
+  restSecondsRemaining
+}: RoutineStepTextProps) {
+  const instruction =
+    step.type === "exercise"
+      ? getRoutineExerciseInstruction(step)
+      : getRoutineRestInstruction(restSecondsRemaining);
+
+  return (
+    <section style={styles.box}>
+      <p style={styles.label}>
+        {step.type === "exercise" ? "Ejercicio" : "Descanso"}
+      </p>
+      <p style={styles.text}>{instruction}</p>
+    </section>
+  );
+}// src/components/routine/ExerciseImageCarousel.tsx
+
+"use client";
+
+import type { CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import {
+  fallbackExerciseImagePath,
+  resolveExerciseImage
+} from "@/lib/images/resolveExerciseImage";
+import type { ExercisePosition } from "@/types/exercise";
+
+type ExerciseImageCarouselProps = {
+  positions: ExercisePosition[];
+};
+
+const fallbackPosition: ExercisePosition = {
+  id: "fallback-position",
+  title: "Imagen no disponible",
+  description: ["Todavía no hay imagen para esta posición."],
+  imagePath: fallbackExerciseImagePath
+};
+
+const styles = {
+  wrapper: {
+    display: "grid",
+    gap: "0.75rem"
+  },
+  imageFrame: {
+    position: "relative",
+    overflow: "hidden",
+    width: "100%",
+    aspectRatio: "1 / 1",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-xl)",
+    background: "rgba(255, 255, 255, 0.45)"
+  },
+  image: {
+    height: "100%",
+    width: "100%",
+    objectFit: "cover"
+  },
+  caption: {
+    display: "grid",
+    gap: "0.35rem"
+  },
+  captionTitle: {
+    margin: 0,
+    fontSize: "0.95rem",
+    fontWeight: 900
+  },
+  list: {
+    margin: 0,
+    paddingLeft: "1.2rem",
+    color: "var(--muted)",
+    fontSize: "0.9rem",
+    lineHeight: 1.45
+  },
+  dots: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "0.4rem"
+  },
+  dot: {
+    height: "0.5rem",
+    width: "0.5rem",
+    borderRadius: "999px",
+    background: "rgba(31, 31, 31, 0.22)"
+  },
+  dotActive: {
+    background: "var(--primary)"
+  }
+} satisfies Record<string, CSSProperties>;
+
+export function ExerciseImageCarousel({
+  positions
+}: ExerciseImageCarouselProps) {
+  const imageItems = useMemo(
+    () => (positions.length > 0 ? positions : [fallbackPosition]),
+    [positions]
+  );
+
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const activePosition = imageItems[currentImageIndex] ?? fallbackPosition;
+  const [imageSrc, setImageSrc] = useState(
+    resolveExerciseImage(activePosition.imagePath)
+  );
+
+  useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [imageItems]);
+
+  useEffect(() => {
+    setImageSrc(resolveExerciseImage(activePosition.imagePath));
+  }, [activePosition.imagePath]);
+
+  useEffect(() => {
+    if (imageItems.length <= 1) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setCurrentImageIndex((currentIndex) =>
+        currentIndex + 1 >= imageItems.length ? 0 : currentIndex + 1
+      );
+    }, 5000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [imageItems.length]);
+
+  function handleImageError(): void {
+    if (imageSrc !== fallbackExerciseImagePath) {
+      setImageSrc(fallbackExerciseImagePath);
+    }
+  }
+
+  return (
+    <section style={styles.wrapper} aria-label="Carrusel de posiciones">
+      <div style={styles.imageFrame}>
+        <img
+          src={imageSrc}
+          alt={activePosition.title}
+          style={styles.image}
+          onError={handleImageError}
+        />
+      </div>
+
+      {imageItems.length > 1 ? (
+        <div style={styles.dots} aria-label="Indicadores del carrusel">
+          {imageItems.map((position, index) => (
+            <span
+              key={position.id}
+              style={{
+                ...styles.dot,
+                ...(index === currentImageIndex ? styles.dotActive : {})
+              }}
+              aria-label={`Imagen ${index + 1} de ${imageItems.length}`}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      <div style={styles.caption}>
+        <p style={styles.captionTitle}>{activePosition.title}</p>
+
+        <ul style={styles.list}>
+          {activePosition.description.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}// src/components/menu/MainMenu.tsx
+
+import Link from "next/link";
+import type { CSSProperties } from "react";
+
+import { defaultRoutine } from "@/data/routines";
+
+const styles = {
+  wrapper: {
+    display: "flex",
+    minHeight: "100vh",
+    flexDirection: "column",
+    justifyContent: "center",
+    gap: "1.25rem"
+  },
+  header: {
+    display: "grid",
+    gap: "0.5rem"
+  },
+  eyebrow: {
+    margin: 0,
+    color: "var(--muted)",
+    fontSize: "0.875rem",
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase"
+  },
+  title: {
+    margin: 0,
+    fontSize: "2.4rem",
+    lineHeight: 1,
+    letterSpacing: "-0.06em"
+  },
+  description: {
+    margin: 0,
+    color: "var(--muted)",
+    fontSize: "1rem",
+    lineHeight: 1.5
+  },
+  card: {
+    display: "grid",
+    gap: "0.85rem",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-xl)",
+    background: "var(--surface)",
+    padding: "1rem",
+    boxShadow: "var(--shadow-soft)"
+  },
+  linkPrimary: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "3.4rem",
+    borderRadius: "999px",
+    background: "var(--primary)",
+    color: "var(--primary-foreground)",
+    fontSize: "1rem",
+    fontWeight: 800
+  },
+  linkSecondary: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "3.2rem",
+    border: "1px solid var(--border)",
+    borderRadius: "999px",
+    background: "rgba(255, 255, 255, 0.56)",
+    fontSize: "0.95rem",
+    fontWeight: 800
+  },
+  meta: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "0.75rem"
+  },
+  metaItem: {
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    background: "rgba(255, 255, 255, 0.42)",
+    padding: "0.9rem"
+  },
+  metaValue: {
+    margin: 0,
+    fontSize: "1.25rem",
+    fontWeight: 900
+  },
+  metaLabel: {
+    margin: "0.2rem 0 0",
+    color: "var(--muted)",
+    fontSize: "0.8rem",
+    fontWeight: 700
+  }
+} satisfies Record<string, CSSProperties>;
+
+export function MainMenu() {
+  return (
+    <main style={styles.wrapper}>
+      <header style={styles.header}>
+        <p style={styles.eyebrow}>Rutina home</p>
+        <h1 style={styles.title}>App de ejercicios</h1>
+        <p style={styles.description}>
+          Seguí tu rutina paso por paso, registrá tus entrenamientos y medí si
+          estás cumpliendo tu objetivo semanal.
+        </p>
+      </header>
+
+      <section style={styles.card} aria-label="Menú principal">
+        <Link href="/routine" style={styles.linkPrimary}>
+          Comenzar rutina
+        </Link>
+
+        <Link href="/stats" style={styles.linkSecondary}>
+          Ver estadísticas
+        </Link>
+
+        <Link href="/goals" style={styles.linkSecondary}>
+          Establecer objetivo
+        </Link>
+      </section>
+
+      <section style={styles.meta} aria-label="Resumen de la rutina">
+        <article style={styles.metaItem}>
+          <p style={styles.metaValue}>
+            {defaultRoutine.idealSessionsPerWeek}x
+          </p>
+          <p style={styles.metaLabel}>por semana</p>
+        </article>
+
+        <article style={styles.metaItem}>
+          <p style={styles.metaValue}>
+            {defaultRoutine.estimatedDurationMinutes.min}-
+            {defaultRoutine.estimatedDurationMinutes.max}m
+          </p>
+          <p style={styles.metaLabel}>duración</p>
+        </article>
+      </section>
+    </main>
+  );
+}// src/components/stats/StatsDashboard.tsx
+
+"use client";
+
+import Link from "next/link";
+import type { CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import {
+  getCurrentWeeklyStats,
+  getGoalStreakStats,
+  getLastTrainingDateKey,
+  getTotalCompletedSessions,
+  getTrainingDateKeys
+} from "@/lib/stats/statsCalculations";
+import { getWeeklyGoal } from "@/lib/storage/goalStorage";
+import { getTrainingStats } from "@/lib/storage/trainingStatsStorage";
+import type { WeeklyGoal } from "@/types/goal";
+import type { TrainingStats } from "@/types/stats";
+
+const emptyStats: TrainingStats = {
+  sessions: []
+};
+
+const styles = {
+  wrapper: {
+    display: "grid",
+    gap: "1rem",
+    alignContent: "start"
+  },
+  topBar: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "1rem"
+  },
+  backLink: {
+    color: "var(--muted)",
+    fontSize: "0.9rem",
+    fontWeight: 800
+  },
+  title: {
+    margin: 0,
+    fontSize: "1.7rem",
+    letterSpacing: "-0.05em"
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "0.75rem"
+  },
+  card: {
+    display: "grid",
+    gap: "0.35rem",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-xl)",
+    background: "var(--surface)",
+    padding: "1rem",
+    boxShadow: "var(--shadow-soft)"
+  },
+  value: {
+    margin: 0,
+    fontSize: "2rem",
+    fontWeight: 950,
+    letterSpacing: "-0.08em"
+  },
+  label: {
+    margin: 0,
+    color: "var(--muted)",
+    fontSize: "0.83rem",
+    fontWeight: 800,
+    lineHeight: 1.35
+  },
+  wideCard: {
+    display: "grid",
+    gap: "0.7rem",
+    gridColumn: "1 / -1",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-xl)",
+    background: "var(--surface)",
+    padding: "1rem",
+    boxShadow: "var(--shadow-soft)"
+  },
+  list: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "0.45rem",
+    margin: 0,
+    padding: 0,
+    listStyle: "none"
+  },
+  pill: {
+    border: "1px solid var(--border)",
+    borderRadius: "999px",
+    background: "rgba(255, 255, 255, 0.58)",
+    padding: "0.45rem 0.7rem",
+    fontSize: "0.82rem",
+    fontWeight: 850
+  },
+  empty: {
+    margin: 0,
+    color: "var(--muted)",
+    lineHeight: 1.45
+  },
+  linkButton: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "3.2rem",
+    borderRadius: "999px",
+    background: "var(--primary)",
+    color: "var(--primary-foreground)",
+    fontWeight: 900
+  }
+} satisfies Record<string, CSSProperties>;
+
+export function StatsDashboard() {
+  const [stats, setStats] = useState<TrainingStats>(emptyStats);
+  const [goal, setGoal] = useState<WeeklyGoal>(() => getWeeklyGoal());
+
+  useEffect(() => {
+    setStats(getTrainingStats());
+    setGoal(getWeeklyGoal());
+  }, []);
+
+  const currentWeeklyStats = useMemo(
+    () => getCurrentWeeklyStats(stats, goal),
+    [stats, goal]
+  );
+
+  const streakStats = useMemo(
+    () => getGoalStreakStats(stats, goal),
+    [stats, goal]
+  );
+
+  const trainingDateKeys = useMemo(() => getTrainingDateKeys(stats), [stats]);
+  const totalCompletedSessions = getTotalCompletedSessions(stats);
+  const lastTrainingDateKey = getLastTrainingDateKey(stats);
+
+  return (
+    <main style={styles.wrapper}>
+      <header style={styles.topBar}>
+        <Link href="/" style={styles.backLink}>
+          Volver
+        </Link>
+        <h1 style={styles.title}>Estadísticas</h1>
+      </header>
+
+      <section style={styles.grid} aria-label="Resumen de estadísticas">
+        <article style={styles.card}>
+          <p style={styles.value}>{currentWeeklyStats.completedSessions}</p>
+          <p style={styles.label}>
+            entrenamientos esta semana de {currentWeeklyStats.goalTarget}
+          </p>
+        </article>
+
+        <article style={styles.card}>
+          <p style={styles.value}>
+            {currentWeeklyStats.isGoalCompleted ? "Sí" : "No"}
+          </p>
+          <p style={styles.label}>objetivo semanal cumplido</p>
+        </article>
+
+        <article style={styles.card}>
+          <p style={styles.value}>{streakStats.currentWeeklyStreak}</p>
+          <p style={styles.label}>semanas seguidas cumpliendo</p>
+        </article>
+
+        <article style={styles.card}>
+          <p style={styles.value}>{streakStats.longestWeeklyStreak}</p>
+          <p style={styles.label}>mejor racha semanal</p>
+        </article>
+
+        <article style={styles.card}>
+          <p style={styles.value}>{totalCompletedSessions}</p>
+          <p style={styles.label}>entrenamientos totales</p>
+        </article>
+
+        <article style={styles.card}>
+          <p style={styles.value}>{lastTrainingDateKey ?? "-"}</p>
+          <p style={styles.label}>último día entrenado</p>
+        </article>
+
+        <section style={styles.wideCard}>
+          <p style={styles.label}>Días entrenados</p>
+
+          {trainingDateKeys.length > 0 ? (
+            <ul style={styles.list}>
+              {trainingDateKeys.map((dateKey) => (
+                <li key={dateKey} style={styles.pill}>
+                  {dateKey}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p style={styles.empty}>
+              Todavía no hay entrenamientos registrados. Completá una rutina
+              para que aparezca acá.
+            </p>
+          )}
+        </section>
+      </section>
+
+      <Link href="/routine" style={styles.linkButton}>
+        Comenzar rutina
+      </Link>
+    </main>
+  );
+}// src/lib/dates/dateKeys.ts
+
+const millisecondsPerDay = 24 * 60 * 60 * 1000;
+
+function padTwoDigits(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+export function getLocalDateKey(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = padTwoDigits(date.getMonth() + 1);
+  const day = padTwoDigits(date.getDate());
+
+  return `${year}-${month}-${day}`;
+}
+
+export function parseLocalDateKey(dateKey: string): Date | null {
+  const parts = dateKey.split("-");
+
+  if (parts.length !== 3) {
+    return null;
+  }
+
+  const [yearPart, monthPart, dayPart] = parts;
+  const year = Number(yearPart);
+  const month = Number(monthPart);
+  const day = Number(dayPart);
+
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day)
+  ) {
+    return null;
+  }
+
+  const parsedDate = new Date(year, month - 1, day);
+
+  if (getLocalDateKey(parsedDate) !== dateKey) {
+    return null;
+  }
+
+  return parsedDate;
+}
+
+export function getIsoWeekKey(date: Date = new Date()): string {
+  const utcDate = new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
+  );
+
+  const dayNumber = utcDate.getUTCDay() || 7;
+
+  utcDate.setUTCDate(utcDate.getUTCDate() + 4 - dayNumber);
+
+  const isoYear = utcDate.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(isoYear, 0, 1));
+
+  const weekNumber = Math.ceil(
+    ((utcDate.getTime() - yearStart.getTime()) / millisecondsPerDay + 1) / 7
+  );
+
+  return `${isoYear}-W${padTwoDigits(weekNumber)}`;
+}
+
+export function getStartOfIsoWeek(date: Date = new Date()): Date {
+  const startDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  );
+
+  const dayNumber = startDate.getDay() || 7;
+
+  startDate.setDate(startDate.getDate() - dayNumber + 1);
+  startDate.setHours(0, 0, 0, 0);
+
+  return startDate;
+}
+
+export function addDays(date: Date, days: number): Date {
+  const nextDate = new Date(date);
+
+  nextDate.setDate(nextDate.getDate() + days);
+
+  return nextDate;
+}
+
+export function parseIsoWeekKey(weekKey: string): Date | null {
+  const match = /^(\d{4})-W(\d{2})$/.exec(weekKey);
+
+  if (!match) {
+    return null;
+  }
+
+  const [, yearPart, weekPart] = match;
+  const year = Number(yearPart);
+  const week = Number(weekPart);
+
+  if (!Number.isInteger(year) || !Number.isInteger(week)) {
+    return null;
+  }
+
+  if (week < 1 || week > 53) {
+    return null;
+  }
+
+  const januaryFourth = new Date(year, 0, 4);
+  const firstIsoWeekStart = getStartOfIsoWeek(januaryFourth);
+  const requestedWeekStart = addDays(firstIsoWeekStart, (week - 1) * 7);
+
+  if (getIsoWeekKey(requestedWeekStart) !== weekKey) {
+    return null;
+  }
+
+  return requestedWeekStart;
+}
+
+export function getPreviousIsoWeekKey(weekKey: string): string | null {
+  const weekStart = parseIsoWeekKey(weekKey);
+
+  if (!weekStart) {
+    return null;
+  }
+
+  return getIsoWeekKey(addDays(weekStart, -7));
+}
+
+export function sortIsoWeekKeysAscending(weekKeys: string[]): string[] {
+  return [...weekKeys].sort((firstWeekKey, secondWeekKey) => {
+    const firstDate = parseIsoWeekKey(firstWeekKey);
+    const secondDate = parseIsoWeekKey(secondWeekKey);
+
+    if (!firstDate || !secondDate) {
+      return firstWeekKey.localeCompare(secondWeekKey);
+    }
+
+    return firstDate.getTime() - secondDate.getTime();
+  });
+}
+
+export function sortDateKeysAscending(dateKeys: string[]): string[] {
+  return [...dateKeys].sort((firstDateKey, secondDateKey) =>
+    firstDateKey.localeCompare(secondDateKey)
+  );
+}
+
+export function sortDateKeysDescending(dateKeys: string[]): string[] {
+  return [...dateKeys].sort((firstDateKey, secondDateKey) =>
+    secondDateKey.localeCompare(firstDateKey)
+  );
+}// src/lib/images/resolveExerciseImage.ts
+
+export const fallbackExerciseImagePath = "/exercises/fallback.png";
+
+export function resolveExerciseImage(
+  imagePath: string | null | undefined
+): string {
+  if (!imagePath) {
+    return fallbackExerciseImagePath;
+  }
+
+  return imagePath;
+}
+
+export function getFallbackExerciseImage(): string {
+  return fallbackExerciseImagePath;
+}// src/lib/routine/formatRoutineTarget.ts
+
+import type {
+    RoutineDurationTarget,
+    RoutineExerciseStep,
+    RoutineRepetitionTarget,
+    RoutineTarget
+} from "@/types/routine";
+
+function formatRepetitionTarget(target: RoutineRepetitionTarget): string {
+    if (target.minReps === target.maxReps) {
+        return `${target.minReps} ${target.unitLabel}`;
+    }
+
+    return `${target.minReps} a ${target.maxReps} ${target.unitLabel}`;
+}
+
+function formatDurationTarget(target: RoutineDurationTarget): string {
+    if (target.minSeconds === target.maxSeconds) {
+        return `${target.minSeconds} segundos`;
+    }
+
+    return `${target.minSeconds} a ${target.maxSeconds} segundos`;
+}
+
+export function formatRoutineTarget(target: RoutineTarget): string {
+    if (target.type === "duration") {
+        return formatDurationTarget(target);
+    }
+
+    return formatRepetitionTarget(target);
+}
+
+export function getRoutineExerciseInstruction(
+    step: RoutineExerciseStep
+): string {
+    if (step.target.type === "duration") {
+        return `Mantené ${step.exercise.shortTitle.toLowerCase()} durante ${formatRoutineTarget(
+            step.target
+        )}.`;
+    }
+
+    return `Realizá ${formatRoutineTarget(step.target)}.`;
+}
+
+export function getRoutineRestInstruction(durationSeconds: number): string {
+    return `Descansá ${durationSeconds} segundos.`;
+}// src/lib/routine/routineProgress.ts
+
+import type { RoutineStep } from "@/types/routine";
+
+export function getCurrentRoutineStep(
+  steps: RoutineStep[],
+  currentStepIndex: number
+): RoutineStep | null {
+  return steps[currentStepIndex] ?? null;
+}
+
+export function getNextRoutineStep(
+  steps: RoutineStep[],
+  currentStepIndex: number
+): RoutineStep | null {
+  return steps[currentStepIndex + 1] ?? null;
+}
+
+export function isRoutineComplete(
+  steps: RoutineStep[],
+  currentStepIndex: number
+): boolean {
+  return currentStepIndex >= steps.length;
+}
+
+export function getRoutineProgressPercentage(
+  steps: RoutineStep[],
+  currentStepIndex: number
+): number {
+  if (steps.length === 0) {
+    return 0;
+  }
+
+  const completedSteps = Math.min(currentStepIndex, steps.length);
+
+  return Math.round((completedSteps / steps.length) * 100);
+}
+
+export function getStepCounterLabel(
+  steps: RoutineStep[],
+  currentStepIndex: number
+): string {
+  if (steps.length === 0) {
+    return "Paso 0 de 0";
+  }
+
+  const visibleStepNumber = Math.min(currentStepIndex + 1, steps.length);
+
+  return `Paso ${visibleStepNumber} de ${steps.length}`;
+}
+
+export function shouldFlipExerciseCard(
+  currentStep: RoutineStep | null,
+  nextStep: RoutineStep | null
+): boolean {
+  if (!currentStep || !nextStep) {
+    return false;
+  }
+
+  return currentStep.exerciseId !== nextStep.exerciseId;
+}
+
+export function isLastStep(
+  steps: RoutineStep[],
+  currentStepIndex: number
+): boolean {
+  return currentStepIndex === steps.length - 1;
+}// src/lib/routine/buildRoutineSteps.ts
+
+import type { Exercise, ExerciseId } from "@/types/exercise";
+
+import { chairDips } from "@/data/exercises/chairDips";
+import { pilatesRingFrontPress } from "@/data/exercises/pilatesRingFrontPress";
+import { pilatesRingOverheadPress } from "@/data/exercises/pilatesRingOverheadPress";
+import { pilatesRingRow } from "@/data/exercises/pilatesRingRow";
+import { plank } from "@/data/exercises/plank";
+import { pushUps } from "@/data/exercises/pushUps";
+import { squats } from "@/data/exercises/squats";
+import { standingCalfRaises } from "@/data/exercises/standingCalfRaises";
+import { standingPilatesRingKneePress } from "@/data/exercises/standingPilatesRingKneePress";
+
+export const exercises = [
+  squats,
+  pushUps,
+  pilatesRingRow,
+  chairDips,
+  pilatesRingOverheadPress,
+  pilatesRingFrontPress,
+  plank,
+  standingPilatesRingKneePress,
+  standingCalfRaises
+] satisfies Exercise[];
+
+export const exercisesById = {
+  squats,
+  "push-ups": pushUps,
+  "pilates-ring-row": pilatesRingRow,
+  "chair-dips": chairDips,
+  "pilates-ring-overhead-press": pilatesRingOverheadPress,
+  "pilates-ring-front-press": pilatesRingFrontPress,
+  plank,
+  "standing-pilates-ring-knee-press": standingPilatesRingKneePress,
+  "standing-calf-raises": standingCalfRaises
+} satisfies Record<ExerciseId, Exercise>;
+
+export function getExerciseById(exerciseId: ExerciseId): Exercise {
+  return exercisesById[exerciseId];
+}
+
+export {
+  chairDips,
+  pilatesRingFrontPress,
+  pilatesRingOverheadPress,
+  pilatesRingRow,
+  plank,
+  pushUps,
+  squats,
+  standingCalfRaises,
+  standingPilatesRingKneePress
+};// src/lib/storage/trainingStatsStorage.ts
+
+import { getLocalDateKey } from "@/lib/dates/dateKeys";
+import { localStorageKeys } from "@/lib/storage/localStorageKeys";
+import type { TrainingSession, TrainingStats } from "@/types/stats";
+
+type RegisterTrainingSessionInput = {
+  routineId: string;
+  routineTitle: string;
+};
+
+function createEmptyTrainingStats(): TrainingStats {
+  return {
+    sessions: []
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+function isTrainingSession(value: unknown): value is TrainingSession {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    isString(value.id) &&
+    isString(value.completedAt) &&
+    isString(value.routineId) &&
+    isString(value.routineTitle)
+  );
+}
+
+function isTrainingStats(value: unknown): value is TrainingStats {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    Array.isArray(value.sessions) &&
+    value.sessions.every((session) => isTrainingSession(session))
+  );
+}
+
+function createTrainingSessionId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `training-session-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2)}`;
+}
+
+export function getTrainingStats(): TrainingStats {
+  if (typeof window === "undefined") {
+    return createEmptyTrainingStats();
+  }
+
+  const rawValue = window.localStorage.getItem(localStorageKeys.trainingStats);
+
+  if (!rawValue) {
+    return createEmptyTrainingStats();
+  }
+
+  try {
+    const parsedValue: unknown = JSON.parse(rawValue);
+
+    if (!isTrainingStats(parsedValue)) {
+      return createEmptyTrainingStats();
+    }
+
+    return parsedValue;
+  } catch {
+    return createEmptyTrainingStats();
+  }
+}
+
+export function saveTrainingStats(stats: TrainingStats): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(
+    localStorageKeys.trainingStats,
+    JSON.stringify(stats)
+  );
+}
+
+export function registerCompletedTrainingSession(
+  input: RegisterTrainingSessionInput
+): TrainingSession {
+  const currentStats = getTrainingStats();
+
+  const newSession: TrainingSession = {
+    id: createTrainingSessionId(),
+    completedAt: new Date().toISOString(),
+    routineId: input.routineId,
+    routineTitle: input.routineTitle
+  };
+
+  saveTrainingStats({
+    sessions: [...currentStats.sessions, newSession]
+  });
+
+  return newSession;
+}
+
+export function removeTrainingSession(sessionId: string): void {
+  const currentStats = getTrainingStats();
+
+  saveTrainingStats({
+    sessions: currentStats.sessions.filter((session) => session.id !== sessionId)
+  });
+}
+
+export function clearTrainingStats(): void {
+  saveTrainingStats(createEmptyTrainingStats());
+}
+
+export function hasTrainingSessionToday(stats: TrainingStats): boolean {
+  const todayKey = getLocalDateKey();
+
+  return stats.sessions.some((session) => {
+    const completedAtDate = new Date(session.completedAt);
+
+    if (Number.isNaN(completedAtDate.getTime())) {
+      return false;
+    }
+
+    return getLocalDateKey(completedAtDate) === todayKey;
+  });
+}// src/lib/storage/localStorageKeys.ts
+
+export const localStorageKeys = {
+  trainingStats: "exerciseRoutineApp.trainingStats.v1",
+  weeklyGoal: "exerciseRoutineApp.weeklyGoal.v1",
+  routineProgress: "exerciseRoutineApp.routineProgress.v1"
+} as const;// src/lib/storage/goalStorage.ts
+
+import { localStorageKeys } from "@/lib/storage/localStorageKeys";
+import type { WeeklyGoal } from "@/types/goal";
+
+const defaultTargetSessionsPerWeek = 3;
+const minWeeklyGoal = 1;
+const maxWeeklyGoal = 7;
+
+function createDefaultWeeklyGoal(): WeeklyGoal {
+  return {
+    targetSessionsPerWeek: defaultTargetSessionsPerWeek,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isWeeklyGoal(value: unknown): value is WeeklyGoal {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.targetSessionsPerWeek === "number" &&
+    Number.isInteger(value.targetSessionsPerWeek) &&
+    value.targetSessionsPerWeek >= minWeeklyGoal &&
+    value.targetSessionsPerWeek <= maxWeeklyGoal &&
+    typeof value.updatedAt === "string"
+  );
+}
+
+function normalizeWeeklyGoalTarget(targetSessionsPerWeek: number): number {
+  if (!Number.isFinite(targetSessionsPerWeek)) {
+    return defaultTargetSessionsPerWeek;
+  }
+
+  const roundedTarget = Math.round(targetSessionsPerWeek);
+
+  return Math.min(Math.max(roundedTarget, minWeeklyGoal), maxWeeklyGoal);
+}
+
+export function createWeeklyGoal(targetSessionsPerWeek: number): WeeklyGoal {
+  return {
+    targetSessionsPerWeek: normalizeWeeklyGoalTarget(targetSessionsPerWeek),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+export function getWeeklyGoal(): WeeklyGoal {
+  if (typeof window === "undefined") {
+    return createDefaultWeeklyGoal();
+  }
+
+  const rawValue = window.localStorage.getItem(localStorageKeys.weeklyGoal);
+
+  if (!rawValue) {
+    return createDefaultWeeklyGoal();
+  }
+
+  try {
+    const parsedValue: unknown = JSON.parse(rawValue);
+
+    if (!isWeeklyGoal(parsedValue)) {
+      return createDefaultWeeklyGoal();
+    }
+
+    return parsedValue;
+  } catch {
+    return createDefaultWeeklyGoal();
+  }
+}
+
+export function saveWeeklyGoal(goal: WeeklyGoal): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(localStorageKeys.weeklyGoal, JSON.stringify(goal));
+}
+
+export function saveWeeklyGoalTarget(targetSessionsPerWeek: number): WeeklyGoal {
+  const weeklyGoal = createWeeklyGoal(targetSessionsPerWeek);
+
+  saveWeeklyGoal(weeklyGoal);
+
+  return weeklyGoal;
+}
+
+export function resetWeeklyGoal(): WeeklyGoal {
+  const weeklyGoal = createDefaultWeeklyGoal();
+
+  saveWeeklyGoal(weeklyGoal);
+
+  return weeklyGoal;
+}// src/lib/stats/statsCalculations.ts
+
+import {
+    getIsoWeekKey,
+    getLocalDateKey,
+    getPreviousIsoWeekKey,
+    sortDateKeysAscending,
+    sortDateKeysDescending,
+    sortIsoWeekKeysAscending
+} from "@/lib/dates/dateKeys";
+import type { WeeklyGoal } from "@/types/goal";
+import type {
+    GoalStreakStats,
+    TrainingSession,
+    TrainingStats,
+    WeeklyStats
+} from "@/types/stats";
+
+function getValidCompletedAtDate(session: TrainingSession): Date | null {
+    const completedAtDate = new Date(session.completedAt);
+
+    if (Number.isNaN(completedAtDate.getTime())) {
+        return null;
+    }
+
+    return completedAtDate;
+}
+
+export function getTrainingDateKeys(stats: TrainingStats): string[] {
+    const dateKeys = new Set<string>();
+
+    for (const session of stats.sessions) {
+        const completedAtDate = getValidCompletedAtDate(session);
+
+        if (!completedAtDate) {
+            continue;
+        }
+
+        dateKeys.add(getLocalDateKey(completedAtDate));
+    }
+
+    return sortDateKeysDescending([...dateKeys]);
+}
+
+export function getTrainingDateKeysAscending(stats: TrainingStats): string[] {
+    return sortDateKeysAscending(getTrainingDateKeys(stats));
+}
+
+export function getSessionsForDate(
+    stats: TrainingStats,
+    dateKey: string
+): TrainingSession[] {
+    return stats.sessions.filter((session) => {
+        const completedAtDate = getValidCompletedAtDate(session);
+
+        if (!completedAtDate) {
+            return false;
+        }
+
+        return getLocalDateKey(completedAtDate) === dateKey;
+    });
+}
+
+export function getSessionsForWeek(
+    stats: TrainingStats,
+    weekKey: string
+): TrainingSession[] {
+    return stats.sessions.filter((session) => {
+        const completedAtDate = getValidCompletedAtDate(session);
+
+        if (!completedAtDate) {
+            return false;
+        }
+
+        return getIsoWeekKey(completedAtDate) === weekKey;
+    });
+}
+
+export function getCompletedSessionsCountForWeek(
+    stats: TrainingStats,
+    weekKey: string
+): number {
+    return getSessionsForWeek(stats, weekKey).length;
+}
+
+export function getCurrentWeeklyStats(
+    stats: TrainingStats,
+    goal: WeeklyGoal,
+    referenceDate: Date = new Date()
+): WeeklyStats {
+    const weekKey = getIsoWeekKey(referenceDate);
+    const completedSessions = getCompletedSessionsCountForWeek(stats, weekKey);
+
+    return {
+        weekKey,
+        completedSessions,
+        goalTarget: goal.targetSessionsPerWeek,
+        isGoalCompleted: completedSessions >= goal.targetSessionsPerWeek
+    };
+}
+
+export function getWeeklyStatsHistory(
+    stats: TrainingStats,
+    goal: WeeklyGoal
+): WeeklyStats[] {
+    const weekKeys = new Set<string>();
+
+    for (const session of stats.sessions) {
+        const completedAtDate = getValidCompletedAtDate(session);
+
+        if (!completedAtDate) {
+            continue;
+        }
+
+        weekKeys.add(getIsoWeekKey(completedAtDate));
+    }
+
+    return sortIsoWeekKeysAscending([...weekKeys]).map((weekKey) => {
+        const completedSessions = getCompletedSessionsCountForWeek(stats, weekKey);
+
+        return {
+            weekKey,
+            completedSessions,
+            goalTarget: goal.targetSessionsPerWeek,
+            isGoalCompleted: completedSessions >= goal.targetSessionsPerWeek
+        };
+    });
+}
+
+export function getGoalStreakStats(
+    stats: TrainingStats,
+    goal: WeeklyGoal,
+    referenceDate: Date = new Date()
+): GoalStreakStats {
+    const weeklyStatsHistory = getWeeklyStatsHistory(stats, goal);
+    const completedGoalWeekKeys = new Set(
+        weeklyStatsHistory
+            .filter((weeklyStats) => weeklyStats.isGoalCompleted)
+            .map((weeklyStats) => weeklyStats.weekKey)
+    );
+
+    let longestWeeklyStreak = 0;
+    let runningWeeklyStreak = 0;
+    let previousWeekKey: string | null = null;
+
+    for (const weekKey of sortIsoWeekKeysAscending([...completedGoalWeekKeys])) {
+        const expectedPreviousWeekKey = getPreviousIsoWeekKey(weekKey);
+        const isConsecutive =
+            previousWeekKey !== null && expectedPreviousWeekKey === previousWeekKey;
+
+        runningWeeklyStreak = isConsecutive ? runningWeeklyStreak + 1 : 1;
+        longestWeeklyStreak = Math.max(longestWeeklyStreak, runningWeeklyStreak);
+        previousWeekKey = weekKey;
+    }
+
+    let currentWeeklyStreak = 0;
+    let cursorWeekKey: string | null = getIsoWeekKey(referenceDate);
+
+    while (cursorWeekKey && completedGoalWeekKeys.has(cursorWeekKey)) {
+        currentWeeklyStreak += 1;
+        cursorWeekKey = getPreviousIsoWeekKey(cursorWeekKey);
+    }
+
+    return {
+        currentWeeklyStreak,
+        longestWeeklyStreak
+    };
+}
+
+export function getTotalCompletedSessions(stats: TrainingStats): number {
+    return stats.sessions.length;
+}
+
+export function getLastTrainingDateKey(stats: TrainingStats): string | null {
+    const dateKeys = getTrainingDateKeys(stats);
+
+    return dateKeys[0] ?? null;
+}// src/data/routines/index.ts
+
+import { defaultRoutine } from "@/data/routines/defaultRoutine";
+
+export const routines = [defaultRoutine] as const;
+
+export { defaultRoutine };// src/data/routines/defaultRoutine.ts
+
+import type { Routine } from "@/types/routine";
+
+export const defaultRoutine: Routine = {
+  id: "home-routine",
+  title: "Rutina home",
+  description:
+    "Rutina full body para hacer en casa, combinando peso corporal, silla y aro de pilates.",
+  idealSessionsPerWeek: 3,
+  estimatedDurationMinutes: {
+    min: 30,
+    max: 40
+  },
+  defaultRestSecondsRange: {
+    minSeconds: 60,
+    maxSeconds: 90
+  },
+  items: [
+    {
+      id: "home-routine-squats",
+      exerciseId: "squats",
+      sets: 3,
+      target: {
+        type: "repetitions",
+        minReps: 12,
+        maxReps: 20,
+        unitLabel: "sentadillas"
+      },
+      restSeconds: 90
+    },
+    {
+      id: "home-routine-push-ups",
+      exerciseId: "push-ups",
+      sets: 3,
+      target: {
+        type: "repetitions",
+        minReps: 8,
+        maxReps: 15,
+        unitLabel: "flexiones"
+      },
+      restSeconds: 90
+    },
+    {
+      id: "home-routine-pilates-ring-row",
+      exerciseId: "pilates-ring-row",
+      sets: 3,
+      target: {
+        type: "repetitions",
+        minReps: 12,
+        maxReps: 15,
+        unitLabel: "repeticiones"
+      },
+      restSeconds: 90
+    },
+    {
+      id: "home-routine-chair-dips",
+      exerciseId: "chair-dips",
+      sets: 3,
+      target: {
+        type: "repetitions",
+        minReps: 10,
+        maxReps: 15,
+        unitLabel: "fondos"
+      },
+      restSeconds: 90
+    },
+    {
+      id: "home-routine-pilates-ring-overhead-press",
+      exerciseId: "pilates-ring-overhead-press",
+      sets: 3,
+      target: {
+        type: "repetitions",
+        minReps: 15,
+        maxReps: 20,
+        unitLabel: "apretones"
+      },
+      restSeconds: 90
+    },
+    {
+      id: "home-routine-pilates-ring-front-press",
+      exerciseId: "pilates-ring-front-press",
+      sets: 3,
+      target: {
+        type: "repetitions",
+        minReps: 15,
+        maxReps: 20,
+        unitLabel: "apretones"
+      },
+      restSeconds: 90
+    },
+    {
+      id: "home-routine-plank",
+      exerciseId: "plank",
+      sets: 3,
+      target: {
+        type: "duration",
+        minSeconds: 30,
+        maxSeconds: 60
+      },
+      restSeconds: 90
+    },
+    {
+      id: "home-routine-standing-pilates-ring-knee-press",
+      exerciseId: "standing-pilates-ring-knee-press",
+      sets: 3,
+      target: {
+        type: "repetitions",
+        minReps: 20,
+        maxReps: 20,
+        unitLabel: "apretones"
+      },
+      restSeconds: 90
+    },
+    {
+      id: "home-routine-standing-calf-raises",
+      exerciseId: "standing-calf-raises",
+      sets: 3,
+      target: {
+        type: "repetitions",
+        minReps: 20,
+        maxReps: 20,
+        unitLabel: "repeticiones"
+      },
+      restSeconds: 90
+    }
+  ]
+};// src/data/exercises/standingPilatesRingKneePress.ts
+
+import type { Exercise } from "@/types/exercise";
+
+export const standingPilatesRingKneePress: Exercise = {
+  id: "standing-pilates-ring-knee-press",
+  title: "Aro entre rodillas",
+  shortTitle: "Aro entre rodillas",
+  category: "legs",
+  equipment: ["pilates-ring"],
+  positions: [
+    {
+      id: "standing-pilates-ring-knee-press-start",
+      title: "Posición inicial",
+      description: [
+        "De pie",
+        "Aro entre rodillas",
+        "Pies paralelos",
+        "Rodillas apenas flexionadas"
+      ],
+      imagePath: "/exercises/standing-pilates-ring-knee-press/01-start.png"
+    },
+    {
+      id: "standing-pilates-ring-knee-press-press",
+      title: "Presión",
+      description: [
+        "Rodillas apretando hacia adentro",
+        "Glúteos y aductores activos",
+        "Aro comprimido",
+        "Postura estable",
+        "Core firme"
+      ],
+      imagePath: "/exercises/standing-pilates-ring-knee-press/02-press.png"
+    }
+  ]
+};// src/data/exercises/plank.ts
+
+import type { Exercise } from "@/types/exercise";
+
+export const plank: Exercise = {
+  id: "plank",
+  title: "Plank / Plancha",
+  shortTitle: "Plancha",
+  category: "core",
+  equipment: ["bodyweight"],
+  positions: [
+    {
+      id: "plank-correct",
+      title: "Posición correcta",
+      description: [
+        "Antebrazos en el piso",
+        "Cuerpo recto",
+        "Glúteos alineados",
+        "Abdomen firme"
+      ],
+      imagePath: "/exercises/plank/01-correct.png"
+    }
+  ]
+};// src/data/exercises/standingCalfRaises.ts
+
+import type { Exercise } from "@/types/exercise";
+
+export const standingCalfRaises: Exercise = {
+  id: "standing-calf-raises",
+  title: "Standing Calf Raises",
+  shortTitle: "Calf Raises",
+  category: "legs",
+  equipment: ["bodyweight"],
+  positions: [
+    {
+      id: "standing-calf-raises-start",
+      title: "Posición inicial",
+      description: [
+        "De pie",
+        "Talones apoyados",
+        "Espalda recta"
+      ],
+      imagePath: "/exercises/standing-calf-raises/01-start.png"
+    },
+    {
+      id: "standing-calf-raises-up",
+      title: "Elevación",
+      description: [
+        "Subir talones",
+        "Peso sobre punta de pies",
+        "Tobillos extendidos",
+        "Pantorrillas contraídas",
+        "Equilibrio controlado"
+      ],
+      imagePath: "/exercises/standing-calf-raises/02-up.png"
+    }
+  ]
+};// src/data/exercises/squats.ts
+
+import type { Exercise } from "@/types/exercise";
+
+export const squats: Exercise = {
+  id: "squats",
+  title: "Squats / Sentadillas",
+  shortTitle: "Sentadillas",
+  category: "legs",
+  equipment: ["bodyweight"],
+  positions: [
+    {
+      id: "squats-start",
+      title: "Posición inicial",
+      description: [
+        "De pie",
+        "Pies al ancho de hombros",
+        "Punta de pies apenas hacia afuera",
+        "Espalda recta",
+        "Pecho abierto",
+        "Brazos al frente o cruzados"
+      ],
+      imagePath: "/exercises/squats/01-start.png"
+    },
+    {
+      id: "squats-down",
+      title: "Bajada",
+      description: [
+        "Cadera hacia atrás como sentándose",
+        "Rodillas doblándose siguiendo la línea de los pies",
+        "Muslos acercándose a paralelo con el suelo",
+        "Talones apoyados",
+        "Tronco ligeramente inclinado pero recto"
+      ],
+      imagePath: "/exercises/squats/02-down.png"
+    }
+  ]
+};// src/data/exercises/pilatesRingOverheadPress.ts
+
+import type { Exercise } from "@/types/exercise";
+
+export const pilatesRingOverheadPress: Exercise = {
+  id: "pilates-ring-overhead-press",
+  title: "Pilates Ring Overhead Press",
+  shortTitle: "Overhead Press",
+  category: "shoulders",
+  equipment: ["pilates-ring"],
+  positions: [
+    {
+      id: "pilates-ring-overhead-press-start",
+      title: "Posición inicial",
+      description: [
+        "Aro arriba de la cabeza",
+        "Brazos elevados",
+        "Codos apenas flexionados"
+      ],
+      imagePath: "/exercises/pilates-ring-overhead-press/01-start.png"
+    },
+    {
+      id: "pilates-ring-overhead-press-press",
+      title: "Presión",
+      description: [
+        "Apretar el aro hacia adentro",
+        "Mantener hombros bajos",
+        "Core firme",
+        "Presión sostenida",
+        "Espalda neutra"
+      ],
+      imagePath: "/exercises/pilates-ring-overhead-press/02-press.png"
+    }
+  ]
+};// src/data/exercises/pushUps.ts
+
+import type { Exercise } from "@/types/exercise";
+
+export const pushUps: Exercise = {
+    id: "push-ups",
+    title: "Push-Ups / Flexiones",
+    shortTitle: "Flexiones",
+    category: "chest",
+    equipment: ["bodyweight"],
+    positions: [
+        {
+            id: "push-ups-top",
+            title: "Posición alta",
+            description: [
+                "Manos debajo de hombros",
+                "Cuerpo recto",
+                "Core apretado",
+                "Piernas extendidas"
+            ],
+            imagePath: "/exercises/push-ups/01-top.png"
+        },
+        {
+            id: "push-ups-down",
+            title: "Bajada",
+            description: [
+                "Codos flexionados hacia atrás o en diagonal",
+                "Pecho acercándose al piso",
+                "El cuerpo sigue recto"
+            ],
+            imagePath: "/exercises/push-ups/02-down.png"
+        }
+    ]
+};// src/data/exercises/pilatesRingRow.ts
+
+import type { Exercise } from "@/types/exercise";
+
+export const pilatesRingRow: Exercise = {
+  id: "pilates-ring-row",
+  title: "Pilates Ring Row",
+  shortTitle: "Ring Row",
+  category: "back",
+  equipment: ["pilates-ring"],
+  positions: [
+    {
+      id: "pilates-ring-row-start",
+      title: "Posición inicial",
+      description: [
+        "De pie",
+        "Aro frente al pecho",
+        "Brazos semiflexionados",
+        "Hombros relajados"
+      ],
+      imagePath: "/exercises/pilates-ring-row/01-start.png"
+    },
+    {
+      id: "pilates-ring-row-pull",
+      title: "Tirón / apertura",
+      description: [
+        "Codos yendo hacia atrás",
+        "Omóplatos juntándose",
+        "Pecho abierto",
+        "Aro abriéndose con tensión",
+        "Pausa breve apretando espalda"
+      ],
+      imagePath: "/exercises/pilates-ring-row/02-pull.png"
+    }
+  ]
+};// src/data/exercises/index.ts
+
+import type { Exercise, ExerciseId } from "@/types/exercise";
+
+import { chairDips } from "@/data/exercises/chairDips";
+import { pilatesRingFrontPress } from "@/data/exercises/pilatesRingFrontPress";
+import { pilatesRingOverheadPress } from "@/data/exercises/pilatesRingOverheadPress";
+import { pilatesRingRow } from "@/data/exercises/pilatesRingRow";
+import { plank } from "@/data/exercises/plank";
+import { pushUps } from "@/data/exercises/pushUps";
+import { squats } from "@/data/exercises/squats";
+import { standingCalfRaises } from "@/data/exercises/standingCalfRaises";
+import { standingPilatesRingKneePress } from "@/data/exercises/standingPilatesRingKneePress";
+
+export const exercises = [
+  squats,
+  pushUps,
+  pilatesRingRow,
+  chairDips,
+  pilatesRingOverheadPress,
+  pilatesRingFrontPress,
+  plank,
+  standingPilatesRingKneePress,
+  standingCalfRaises
+] satisfies Exercise[];
+
+export const exercisesById = {
+  squats,
+  "push-ups": pushUps,
+  "pilates-ring-row": pilatesRingRow,
+  "chair-dips": chairDips,
+  "pilates-ring-overhead-press": pilatesRingOverheadPress,
+  "pilates-ring-front-press": pilatesRingFrontPress,
+  plank,
+  "standing-pilates-ring-knee-press": standingPilatesRingKneePress,
+  "standing-calf-raises": standingCalfRaises
+} satisfies Record<ExerciseId, Exercise>;
+
+export function getExerciseById(exerciseId: ExerciseId): Exercise {
+  return exercisesById[exerciseId];
+}
+
+export {
+  chairDips,
+  pilatesRingFrontPress,
+  pilatesRingOverheadPress,
+  pilatesRingRow,
+  plank,
+  pushUps,
+  squats,
+  standingCalfRaises,
+  standingPilatesRingKneePress
+};// src/data/exercises/chairDips.ts
+
+import type { Exercise } from "@/types/exercise";
+
+export const chairDips: Exercise = {
+  id: "chair-dips",
+  title: "Chair Dips",
+  shortTitle: "Fondos con silla",
+  category: "arms",
+  equipment: ["bodyweight", "chair"],
+  positions: [
+    {
+      id: "chair-dips-top",
+      title: "Posición inicial",
+      description: [
+        "Manos apoyadas en borde de silla",
+        "Brazos extendidos",
+        "Cadera fuera de la silla",
+        "Piernas flexionadas o extendidas"
+      ],
+      imagePath: "/exercises/chair-dips/01-top.png"
+    },
+    {
+      id: "chair-dips-down",
+      title: "Bajada",
+      description: [
+        "Codos doblándose hacia atrás",
+        "Cuerpo descendiendo recto",
+        "Hombros bajan hasta aproximadamente 90 grados"
+      ],
+      imagePath: "/exercises/chair-dips/02-down.png"
+    }
+  ]
+};// src/data/exercises/pilatesRingFrontPress.ts
+
+import type { Exercise } from "@/types/exercise";
+
+export const pilatesRingFrontPress: Exercise = {
+  id: "pilates-ring-front-press",
+  title: "Pilates Ring Front Press",
+  shortTitle: "Front Press",
+  category: "chest",
+  equipment: ["pilates-ring"],
+  positions: [
+    {
+      id: "pilates-ring-front-press-start",
+      title: "Posición inicial",
+      description: [
+        "Aro frente al abdomen o pecho bajo",
+        "Brazos al frente",
+        "Postura recta"
+      ],
+      imagePath: "/exercises/pilates-ring-front-press/01-start.png"
+    },
+    {
+      id: "pilates-ring-front-press-press",
+      title: "Presión",
+      description: [
+        "Apretar el aro lentamente",
+        "Pecho y brazos activos",
+        "Codos suaves",
+        "Core contraído",
+        "Respiración controlada"
+      ],
+      imagePath: "/exercises/pilates-ring-front-press/02-press.png"
+    }
+  ]
+};import type { Routine } from "@/types/routine";
+
+export const defaultRoutine: Routine = {
+  id: "default-routine",
+  title: "Rutina principal",
+  items: [],
+};
