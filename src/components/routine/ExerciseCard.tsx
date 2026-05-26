@@ -23,8 +23,12 @@ const styles = {
     display: "flex",
     maxHeight: "80vh",
     minHeight: "80vh",
+    width: "100%",
+    maxWidth: "100%",
+    minWidth: 0,
     flexDirection: "column",
     gap: "1rem",
+    overflowX: "hidden",
     overflowY: "auto",
     border: "1px solid var(--border)",
     borderRadius: "var(--radius-xl)",
@@ -40,7 +44,8 @@ const styles = {
   },
   header: {
     display: "grid",
-    gap: "0.35rem"
+    gap: "0.35rem",
+    minWidth: 0
   },
   counter: {
     margin: 0,
@@ -54,10 +59,13 @@ const styles = {
     display: "flex",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    gap: "1rem"
+    gap: "1rem",
+    minWidth: 0
   },
   title: {
     margin: 0,
+    minWidth: 0,
+    overflowWrap: "anywhere",
     fontSize: "1.6rem",
     lineHeight: 1.1,
     letterSpacing: "-0.055em"
@@ -73,11 +81,13 @@ const styles = {
   },
   content: {
     display: "grid",
-    gap: "1rem"
+    gap: "1rem",
+    minWidth: 0
   },
   targetBox: {
     display: "grid",
     gap: "0.25rem",
+    minWidth: 0,
     border: "1px solid var(--border)",
     borderRadius: "var(--radius-lg)",
     background: "rgba(255, 255, 255, 0.48)",
@@ -93,6 +103,8 @@ const styles = {
   },
   targetText: {
     margin: 0,
+    minWidth: 0,
+    overflowWrap: "anywhere",
     fontSize: "1.05rem",
     fontWeight: 900,
     lineHeight: 1.25
@@ -110,7 +122,8 @@ const styles = {
   timerArea: {
     display: "grid",
     justifyItems: "center",
-    gap: "0.5rem"
+    gap: "0.5rem",
+    minWidth: 0
   }
 } satisfies Record<string, CSSProperties>;
 

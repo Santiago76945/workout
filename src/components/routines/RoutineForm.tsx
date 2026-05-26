@@ -9,6 +9,11 @@ import { useState } from "react";
 
 import { RoutineItemEditor } from "@/components/routines/RoutineItemEditor";
 import { exercises } from "@/data/exercises";
+import { getExerciseSetTargetType } from "@/lib/routine/exerciseSetTarget";
+import {
+  defaultRepetitionUnitLabel,
+  routineValidationLimits
+} from "@/lib/routine/routineValidation";
 import { createRoutine } from "@/lib/storage/routineStorage";
 import type { ExerciseId } from "@/types/exercise";
 import type { CreateRoutineItemInput, RoutineTarget } from "@/types/routine";
@@ -17,7 +22,6 @@ type DraftRoutineItem = {
   id: string;
   exerciseId: ExerciseId;
   sets: number;
-  targetType: RoutineTarget["type"];
   repetitions: number;
   durationSeconds: number;
   restSecondsBetweenSets: number;
@@ -160,11 +164,29 @@ function createDraftRoutineItem(): DraftRoutineItem {
   return {
     id: createDraftItemId(),
     exerciseId: getDefaultExerciseId(),
-    sets: 3,
-    targetType: "repetitions",
-    repetitions: 10,
-    durationSeconds: 30,
+    sets: routineValidationLimits.sets.defaultValue,
+    repetitions: routineValidationLimits.repetitions.defaultValue,
+    durationSeconds: routineValidationLimits.durationSeconds.defaultValue,
     restSecondsBetweenSets: 60
+  };
+}
+
+function createRoutineTargetFromDraftItem(
+  item: DraftRoutineItem
+): RoutineTarget {
+  const targetType = getExerciseSetTargetType(item.exerciseId);
+
+  if (targetType === "duration") {
+    return {
+      type: "duration",
+      seconds: item.durationSeconds
+    };
+  }
+
+  return {
+    type: "repetitions",
+    repetitions: item.repetitions,
+    unitLabel: defaultRepetitionUnitLabel
   };
 }
 
@@ -172,26 +194,10 @@ function buildCreateRoutineItemsInput(
   items: DraftRoutineItem[]
 ): CreateRoutineItemInput[] {
   return items.map((item): CreateRoutineItemInput => {
-    if (item.targetType === "duration") {
-      return {
-        exerciseId: item.exerciseId,
-        sets: item.sets,
-        target: {
-          type: "duration",
-          seconds: item.durationSeconds
-        },
-        restSecondsBetweenSets: item.restSecondsBetweenSets
-      };
-    }
-
     return {
       exerciseId: item.exerciseId,
       sets: item.sets,
-      target: {
-        type: "repetitions",
-        repetitions: item.repetitions,
-        unitLabel: "repeticiones"
-      },
+      target: createRoutineTargetFromDraftItem(item),
       restSecondsBetweenSets: item.restSecondsBetweenSets
     };
   });
@@ -292,13 +298,13 @@ export function RoutineForm() {
       items: buildCreateRoutineItemsInput(items)
     });
 
-    router.push("/");
+    router.push("/routines");
   }
 
   return (
     <main style={styles.wrapper}>
       <header style={styles.topBar}>
-        <Link href="/" style={styles.backLink}>
+        <Link href="/routines" style={styles.backLink}>
           Volver
         </Link>
 
@@ -322,8 +328,9 @@ export function RoutineForm() {
           </label>
 
           <p style={styles.helperText}>
-            Elegí los ejercicios, definí series, repeticiones o segundos por
-            serie, y configurá el descanso después de cada serie.
+            Elegí los ejercicios, definí series y configurá el descanso después
+            de cada serie. El tipo de objetivo depende del ejercicio: algunos
+            usan repeticiones y otros usan segundos.
           </p>
         </section>
 

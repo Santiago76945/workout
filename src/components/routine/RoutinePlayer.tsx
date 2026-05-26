@@ -30,27 +30,37 @@ const styles = {
     display: "grid",
     alignContent: "center",
     gap: "1rem",
-    minHeight: "100vh"
+    minHeight: "100vh",
+    width: "100%",
+    maxWidth: "100%",
+    overflowX: "hidden"
   },
   topBar: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: "1rem"
+    gap: "1rem",
+    minWidth: 0
   },
   backLink: {
+    flexShrink: 0,
     color: "var(--muted)",
     fontSize: "0.9rem",
     fontWeight: 800
   },
   title: {
     margin: 0,
+    minWidth: 0,
+    overflowWrap: "anywhere",
     fontSize: "1.35rem",
-    letterSpacing: "-0.04em"
+    letterSpacing: "-0.04em",
+    textAlign: "right"
   },
   progressOuter: {
     overflow: "hidden",
     height: "0.6rem",
+    width: "100%",
+    maxWidth: "100%",
     borderRadius: "999px",
     background: "rgba(31, 31, 31, 0.1)"
   },
@@ -63,6 +73,7 @@ const styles = {
   emptyCard: {
     display: "grid",
     gap: "1rem",
+    minWidth: 0,
     border: "1px solid var(--border)",
     borderRadius: "var(--radius-xl)",
     background: "var(--surface)",
@@ -72,6 +83,8 @@ const styles = {
   },
   emptyTitle: {
     margin: 0,
+    minWidth: 0,
+    overflowWrap: "anywhere",
     fontSize: "1.7rem",
     letterSpacing: "-0.05em"
   },
@@ -233,11 +246,15 @@ export function RoutinePlayer() {
         <section style={styles.emptyCard}>
           <h1 style={styles.emptyTitle}>No hay rutina seleccionada</h1>
           <p style={styles.emptyText}>
-            Elegí una rutina desde el menú o creá una nueva para comenzar.
+            Elegí una rutina desde Mis rutinas o creá una nueva para comenzar.
           </p>
 
           <Link href="/routines/new" style={styles.linkButton}>
             Crear rutina
+          </Link>
+
+          <Link href="/routines" style={styles.secondaryLink}>
+            Ir a Mis rutinas
           </Link>
 
           <Link href="/" style={styles.secondaryLink}>
@@ -262,6 +279,10 @@ export function RoutinePlayer() {
             Crear rutina
           </Link>
 
+          <Link href="/routines" style={styles.secondaryLink}>
+            Ir a Mis rutinas
+          </Link>
+
           <Link href="/" style={styles.secondaryLink}>
             Volver al menú
           </Link>
@@ -281,7 +302,7 @@ export function RoutinePlayer() {
   return (
     <main style={styles.wrapper}>
       <header style={styles.topBar}>
-        <Link href="/" style={styles.backLink}>
+        <Link href="/routines" style={styles.backLink}>
           Volver
         </Link>
 

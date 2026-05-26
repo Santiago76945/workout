@@ -28,21 +28,23 @@ export type GoalStreakStats = {
   longestWeeklyStreak: number;
 };// src/types/exercise.ts
 
-export type ExerciseId =
-  | "squats"
-  | "push-ups"
-  | "pilates-ring-row"
-  | "chair-dips"
-  | "pilates-ring-overhead-press"
-  | "pilates-ring-front-press"
-  | "plank"
-  | "standing-pilates-ring-knee-press"
-  | "standing-calf-raises";
+export const exerciseIds = [
+  "squats",
+  "push-ups",
+  "pilates-ring-row",
+  "chair-dips",
+  "pilates-ring-overhead-press",
+  "pilates-ring-front-press",
+  "plank",
+  "standing-pilates-ring-knee-press",
+  "standing-calf-raises"
+] as const;
+
+export type ExerciseId = (typeof exerciseIds)[number];
 
 export type ExercisePosition = {
   id: string;
   title: string;
-  description: string[];
   imagePath: string;
 };
 
@@ -55,10 +57,12 @@ export type ExerciseCategory =
   | "core"
   | "full-body";
 
-export type ExerciseEquipment =
-  | "bodyweight"
-  | "chair"
-  | "pilates-ring";
+export type ExerciseEquipment = "bodyweight" | "chair" | "pilates-ring";
+
+export type ExerciseWorkedMuscles = {
+  primary: string[];
+  secondary: string[];
+};
 
 export type Exercise = {
   id: ExerciseId;
@@ -66,6 +70,8 @@ export type Exercise = {
   shortTitle: string;
   category: ExerciseCategory;
   equipment: ExerciseEquipment[];
+  instruction: string;
+  workedMuscles: ExerciseWorkedMuscles;
   positions: ExercisePosition[];
 };// src/types/routine.ts
 
@@ -73,15 +79,13 @@ import type { Exercise, ExerciseId } from "@/types/exercise";
 
 export type RoutineRepetitionTarget = {
   type: "repetitions";
-  minReps: number;
-  maxReps: number;
+  repetitions: number;
   unitLabel: string;
 };
 
 export type RoutineDurationTarget = {
   type: "duration";
-  minSeconds: number;
-  maxSeconds: number;
+  seconds: number;
 };
 
 export type RoutineTarget = RoutineRepetitionTarget | RoutineDurationTarget;
@@ -91,30 +95,37 @@ export type RoutineItem = {
   exerciseId: ExerciseId;
   sets: number;
   target: RoutineTarget;
-  restSeconds: number;
+  restSecondsBetweenSets: number;
+};
+
+export type CreateRoutineItemInput = {
+  exerciseId: ExerciseId;
+  sets: number;
+  target: RoutineTarget;
+  restSecondsBetweenSets: number;
+};
+
+export type CreateRoutineInput = {
+  title: string;
+  items: CreateRoutineItemInput[];
 };
 
 export type Routine = {
   id: string;
   title: string;
-  description: string;
-  idealSessionsPerWeek: number;
-  estimatedDurationMinutes: {
-    min: number;
-    max: number;
-  };
-  defaultRestSecondsRange: {
-    minSeconds: number;
-    maxSeconds: number;
-  };
+  createdAt: string;
+  updatedAt: string;
   items: RoutineItem[];
 };
 
 export type RoutineExerciseStep = {
   id: string;
   type: "exercise";
+  routineItemId: string;
   exerciseId: ExerciseId;
   exercise: Exercise;
+  exerciseStepNumber: number;
+  totalExerciseSteps: number;
   setNumber: number;
   totalSets: number;
   target: RoutineTarget;
@@ -123,9 +134,12 @@ export type RoutineExerciseStep = {
 export type RoutineRestStep = {
   id: string;
   type: "rest";
+  routineItemId: string;
   exerciseId: ExerciseId;
   exercise: Exercise;
   durationSeconds: number;
+  afterExerciseStepNumber: number;
+  totalExerciseSteps: number;
   afterSetNumber: number;
   totalSets: number;
 };
@@ -146,6 +160,12 @@ import { RoutinePlayer } from "@/components/routine/RoutinePlayer";
 
 export default function RoutinePage() {
   return <RoutinePlayer />;
+}// src/app/routines/new/page.tsx
+
+import { RoutineForm } from "@/components/routines/RoutineForm";
+
+export default function NewRoutinePage() {
+  return <RoutineForm />;
 }// src/app/layout.tsx
 
 import type { Metadata } from "next";
@@ -583,7 +603,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ExerciseCard } from "@/components/routine/ExerciseCard";
 import { RoutineComplete } from "@/components/routine/RoutineComplete";
-import { defaultRoutine } from "@/data/routines";
 import { buildRoutineSteps } from "@/lib/routine/buildRoutineSteps";
 import {
   getCurrentRoutineStep,
@@ -594,7 +613,12 @@ import {
   isRoutineComplete,
   shouldFlipExerciseCard
 } from "@/lib/routine/routineProgress";
+import {
+  clearSelectedRoutineId,
+  getSelectedRoutine
+} from "@/lib/storage/routineStorage";
 import { registerCompletedTrainingSession } from "@/lib/storage/trainingStatsStorage";
+import type { Routine } from "@/types/routine";
 
 const styles = {
   wrapper: {
@@ -630,17 +654,63 @@ const styles = {
     borderRadius: "999px",
     background: "var(--primary)",
     transition: "width 180ms ease"
+  },
+  emptyCard: {
+    display: "grid",
+    gap: "1rem",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-xl)",
+    background: "var(--surface)",
+    padding: "1rem",
+    boxShadow: "var(--shadow-soft)",
+    textAlign: "center"
+  },
+  emptyTitle: {
+    margin: 0,
+    fontSize: "1.7rem",
+    letterSpacing: "-0.05em"
+  },
+  emptyText: {
+    margin: 0,
+    color: "var(--muted)",
+    lineHeight: 1.5
+  },
+  linkButton: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "3.2rem",
+    borderRadius: "999px",
+    background: "var(--primary)",
+    color: "var(--primary-foreground)",
+    fontWeight: 900
+  },
+  secondaryLink: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "3.2rem",
+    border: "1px solid var(--border)",
+    borderRadius: "999px",
+    background: "rgba(255, 255, 255, 0.55)",
+    fontWeight: 900
   }
 } satisfies Record<string, CSSProperties>;
 
 export function RoutinePlayer() {
-  const steps = useMemo(() => buildRoutineSteps(defaultRoutine), []);
   const timeoutRef = useRef<number | null>(null);
   const hasRegisteredCompletionRef = useRef(false);
 
+  const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null);
+  const [hasLoadedRoutine, setHasLoadedRoutine] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isFlipping, setIsFlipping] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+
+  const steps = useMemo(
+    () => (selectedRoutine ? buildRoutineSteps(selectedRoutine) : []),
+    [selectedRoutine]
+  );
 
   const currentStep = getCurrentRoutineStep(steps, currentStepIndex);
   const progressPercentage = getRoutineProgressPercentage(
@@ -648,6 +718,28 @@ export function RoutinePlayer() {
     currentStepIndex
   );
   const stepCounterLabel = getStepCounterLabel(steps, currentStepIndex);
+
+  useEffect(() => {
+    const routine = getSelectedRoutine();
+
+    if (!routine) {
+      clearSelectedRoutineId();
+    }
+
+    setSelectedRoutine(routine);
+    setHasLoadedRoutine(true);
+  }, []);
+
+  useEffect(() => {
+    if (timeoutRef.current !== null) {
+      window.clearTimeout(timeoutRef.current);
+    }
+
+    hasRegisteredCompletionRef.current = false;
+    setCurrentStepIndex(0);
+    setIsComplete(false);
+    setIsFlipping(false);
+  }, [selectedRoutine?.id]);
 
   useEffect(() => {
     return () => {
@@ -658,15 +750,15 @@ export function RoutinePlayer() {
   }, []);
 
   function completeRoutine(): void {
-    if (hasRegisteredCompletionRef.current) {
+    if (!selectedRoutine || hasRegisteredCompletionRef.current) {
       return;
     }
 
     hasRegisteredCompletionRef.current = true;
 
     registerCompletedTrainingSession({
-      routineId: defaultRoutine.id,
-      routineTitle: defaultRoutine.title
+      routineId: selectedRoutine.id,
+      routineTitle: selectedRoutine.title
     });
 
     setCurrentStepIndex(steps.length);
@@ -719,6 +811,60 @@ export function RoutinePlayer() {
     setIsFlipping(false);
   }
 
+  if (!hasLoadedRoutine) {
+    return (
+      <main style={styles.wrapper}>
+        <section style={styles.emptyCard}>
+          <h1 style={styles.emptyTitle}>Cargando rutina</h1>
+          <p style={styles.emptyText}>Preparando tu entrenamiento.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (!selectedRoutine) {
+    return (
+      <main style={styles.wrapper}>
+        <section style={styles.emptyCard}>
+          <h1 style={styles.emptyTitle}>No hay rutina seleccionada</h1>
+          <p style={styles.emptyText}>
+            Elegí una rutina desde el menú o creá una nueva para comenzar.
+          </p>
+
+          <Link href="/routines/new" style={styles.linkButton}>
+            Crear rutina
+          </Link>
+
+          <Link href="/" style={styles.secondaryLink}>
+            Volver al menú
+          </Link>
+        </section>
+      </main>
+    );
+  }
+
+  if (steps.length === 0) {
+    return (
+      <main style={styles.wrapper}>
+        <section style={styles.emptyCard}>
+          <h1 style={styles.emptyTitle}>Rutina vacía</h1>
+          <p style={styles.emptyText}>
+            Esta rutina no tiene ejercicios. Creá una rutina nueva con al menos
+            un ejercicio.
+          </p>
+
+          <Link href="/routines/new" style={styles.linkButton}>
+            Crear rutina
+          </Link>
+
+          <Link href="/" style={styles.secondaryLink}>
+            Volver al menú
+          </Link>
+        </section>
+      </main>
+    );
+  }
+
   if (isComplete || !currentStep) {
     return (
       <main style={styles.wrapper}>
@@ -734,7 +880,7 @@ export function RoutinePlayer() {
           Volver
         </Link>
 
-        <h1 style={styles.title}>{defaultRoutine.title}</h1>
+        <h1 style={styles.title}>{selectedRoutine.title}</h1>
       </header>
 
       <div
@@ -767,7 +913,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ExerciseImageCarousel } from "@/components/routine/ExerciseImageCarousel";
 import { RestTimer } from "@/components/routine/RestTimer";
-import { RoutineStepText } from "@/components/routine/RoutineStepText";
+import { formatRoutineTarget } from "@/lib/routine/formatRoutineTarget";
 import type { RoutineStep } from "@/types/routine";
 
 type ExerciseCardProps = {
@@ -822,7 +968,7 @@ const styles = {
     lineHeight: 1.1,
     letterSpacing: "-0.055em"
   },
-  setPill: {
+  stepPill: {
     flexShrink: 0,
     border: "1px solid var(--border)",
     borderRadius: "999px",
@@ -834,6 +980,28 @@ const styles = {
   content: {
     display: "grid",
     gap: "1rem"
+  },
+  targetBox: {
+    display: "grid",
+    gap: "0.25rem",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    background: "rgba(255, 255, 255, 0.48)",
+    padding: "0.85rem"
+  },
+  targetLabel: {
+    margin: 0,
+    color: "var(--muted)",
+    fontSize: "0.75rem",
+    fontWeight: 900,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase"
+  },
+  targetText: {
+    margin: 0,
+    fontSize: "1.05rem",
+    fontWeight: 900,
+    lineHeight: 1.25
   },
   button: {
     minHeight: "3.4rem",
@@ -882,6 +1050,24 @@ export function ExerciseCard({
   const isRestStep = step.type === "rest";
   const isConfirmDisabled = isFlipping || (isRestStep && !isRestComplete);
 
+  const exerciseCounterLabel =
+    step.type === "exercise"
+      ? `Ejercicio ${step.exerciseStepNumber}/${step.totalExerciseSteps}`
+      : `Ejercicio ${step.afterExerciseStepNumber}/${step.totalExerciseSteps}`;
+
+  const setCounterLabel =
+    step.type === "exercise"
+      ? `Serie ${step.setNumber}/${step.totalSets}`
+      : `Descanso ${step.afterSetNumber}/${step.totalSets}`;
+
+  const targetLabel =
+    step.type === "exercise" ? "Objetivo por serie" : "Descanso";
+
+  const targetText =
+    step.type === "exercise"
+      ? formatRoutineTarget(step.target)
+      : `${remainingRestSeconds} segundos`;
+
   const buttonLabel = isFlipping
     ? "Cambiando ejercicio..."
     : isRestStep
@@ -896,7 +1082,7 @@ export function ExerciseCard({
         ...styles.card,
         ...(isFlipping ? styles.cardFlipping : {})
       }}
-      aria-label={`Ejercicio actual. ${stepCounterLabel}. ${progressPercentage}% completado.`}
+      aria-label={`Paso actual. ${stepCounterLabel}. ${progressPercentage}% completado.`}
     >
       <header style={styles.header}>
         <p style={styles.counter}>{stepCounterLabel}</p>
@@ -904,21 +1090,19 @@ export function ExerciseCard({
         <div style={styles.titleRow}>
           <h2 style={styles.title}>{step.exercise.title}</h2>
 
-          <span style={styles.setPill}>
-            {step.type === "exercise"
-              ? `Serie ${step.setNumber}/${step.totalSets}`
-              : `Descanso ${step.afterSetNumber}/${step.totalSets}`}
-          </span>
+          <span style={styles.stepPill}>{exerciseCounterLabel}</span>
         </div>
+
+        <p style={styles.counter}>{setCounterLabel}</p>
       </header>
 
       <div style={styles.content}>
         <ExerciseImageCarousel positions={step.exercise.positions} />
 
-        <RoutineStepText
-          step={step}
-          restSecondsRemaining={remainingRestSeconds}
-        />
+        <section style={styles.targetBox}>
+          <p style={styles.targetLabel}>{targetLabel}</p>
+          <p style={styles.targetText}>{targetText}</p>
+        </section>
 
         {isRestStep ? (
           <div style={styles.timerArea}>
@@ -1015,63 +1199,6 @@ export function RoutineComplete({ onRestart }: RoutineCompleteProps) {
       </Link>
     </section>
   );
-}// src/components/routine/RoutineStepText.tsx
-
-import type { CSSProperties } from "react";
-
-import {
-  getRoutineExerciseInstruction,
-  getRoutineRestInstruction
-} from "@/lib/routine/formatRoutineTarget";
-import type { RoutineStep } from "@/types/routine";
-
-type RoutineStepTextProps = {
-  step: RoutineStep;
-  restSecondsRemaining: number;
-};
-
-const styles = {
-  box: {
-    display: "grid",
-    gap: "0.35rem",
-    border: "1px solid var(--border)",
-    borderRadius: "var(--radius-lg)",
-    background: "rgba(255, 255, 255, 0.48)",
-    padding: "0.9rem"
-  },
-  label: {
-    margin: 0,
-    color: "var(--muted)",
-    fontSize: "0.78rem",
-    fontWeight: 900,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase"
-  },
-  text: {
-    margin: 0,
-    fontSize: "1.05rem",
-    fontWeight: 850,
-    lineHeight: 1.35
-  }
-} satisfies Record<string, CSSProperties>;
-
-export function RoutineStepText({
-  step,
-  restSecondsRemaining
-}: RoutineStepTextProps) {
-  const instruction =
-    step.type === "exercise"
-      ? getRoutineExerciseInstruction(step)
-      : getRoutineRestInstruction(restSecondsRemaining);
-
-  return (
-    <section style={styles.box}>
-      <p style={styles.label}>
-        {step.type === "exercise" ? "Ejercicio" : "Descanso"}
-      </p>
-      <p style={styles.text}>{instruction}</p>
-    </section>
-  );
 }// src/components/routine/ExerciseImageCarousel.tsx
 
 "use client";
@@ -1093,7 +1220,6 @@ type ExerciseImageCarouselProps = {
 const fallbackPosition: ExercisePosition = {
   id: "fallback-position",
   title: "Imagen no disponible",
-  description: ["Todavía no hay imagen para esta posición."],
   imagePath: fallbackExerciseImagePath
 };
 
@@ -1113,22 +1239,6 @@ const styles = {
   },
   image: {
     objectFit: "cover"
-  },
-  caption: {
-    display: "grid",
-    gap: "0.35rem"
-  },
-  captionTitle: {
-    margin: 0,
-    fontSize: "0.95rem",
-    fontWeight: 900
-  },
-  list: {
-    margin: 0,
-    paddingLeft: "1.2rem",
-    color: "var(--muted)",
-    fontSize: "0.9rem",
-    lineHeight: 1.45
   },
   dots: {
     display: "flex",
@@ -1192,7 +1302,7 @@ export function ExerciseImageCarousel({
   }
 
   return (
-    <section style={styles.wrapper} aria-label="Carrusel de posiciones">
+    <section style={styles.wrapper} aria-label="Carrusel de imágenes">
       <div style={styles.imageFrame}>
         <Image
           src={imageSrc}
@@ -1219,24 +1329,698 @@ export function ExerciseImageCarousel({
           ))}
         </div>
       ) : null}
-
-      <div style={styles.caption}>
-        <p style={styles.captionTitle}>{activePosition.title}</p>
-
-        <ul style={styles.list}>
-          {activePosition.description.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </div>
     </section>
+  );
+}// src/components/routines/RoutineForm.tsx
+
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { CSSProperties, FormEvent } from "react";
+import { useState } from "react";
+
+import { RoutineItemEditor } from "@/components/routines/RoutineItemEditor";
+import { exercises } from "@/data/exercises";
+import { createRoutine } from "@/lib/storage/routineStorage";
+import type { ExerciseId } from "@/types/exercise";
+import type { CreateRoutineItemInput, RoutineTarget } from "@/types/routine";
+
+type DraftRoutineItem = {
+  id: string;
+  exerciseId: ExerciseId;
+  sets: number;
+  targetType: RoutineTarget["type"];
+  repetitions: number;
+  durationSeconds: number;
+  restSecondsBetweenSets: number;
+};
+
+const fallbackExerciseId: ExerciseId = "squats";
+
+const styles = {
+  wrapper: {
+    display: "grid",
+    gap: "1rem",
+    alignContent: "start"
+  },
+  topBar: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "1rem"
+  },
+  backLink: {
+    color: "var(--muted)",
+    fontSize: "0.9rem",
+    fontWeight: 800
+  },
+  title: {
+    margin: 0,
+    fontSize: "1.7rem",
+    letterSpacing: "-0.05em"
+  },
+  form: {
+    display: "grid",
+    gap: "1rem"
+  },
+  card: {
+    display: "grid",
+    gap: "1rem",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-xl)",
+    background: "var(--surface)",
+    padding: "1rem",
+    boxShadow: "var(--shadow-soft)"
+  },
+  label: {
+    display: "grid",
+    gap: "0.45rem",
+    color: "var(--muted)",
+    fontSize: "0.88rem",
+    fontWeight: 850
+  },
+  input: {
+    minHeight: "3.2rem",
+    width: "100%",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    background: "rgba(255, 255, 255, 0.62)",
+    color: "var(--foreground)",
+    padding: "0 0.9rem",
+    fontSize: "1rem",
+    fontWeight: 850
+  },
+  helperText: {
+    margin: 0,
+    color: "var(--muted)",
+    fontSize: "0.9rem",
+    lineHeight: 1.45
+  },
+  sectionHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "1rem"
+  },
+  sectionTitle: {
+    margin: 0,
+    fontSize: "1.15rem",
+    fontWeight: 950,
+    letterSpacing: "-0.03em"
+  },
+  itemsList: {
+    display: "grid",
+    gap: "0.85rem"
+  },
+  emptyState: {
+    margin: 0,
+    border: "1px dashed var(--border)",
+    borderRadius: "var(--radius-lg)",
+    color: "var(--muted)",
+    padding: "1rem",
+    textAlign: "center",
+    lineHeight: 1.45
+  },
+  error: {
+    margin: 0,
+    border: "1px solid rgba(180, 35, 24, 0.24)",
+    borderRadius: "var(--radius-lg)",
+    background: "rgba(180, 35, 24, 0.08)",
+    color: "var(--danger)",
+    padding: "0.85rem",
+    fontSize: "0.9rem",
+    fontWeight: 850,
+    lineHeight: 1.4
+  },
+  button: {
+    minHeight: "3.3rem",
+    border: 0,
+    borderRadius: "999px",
+    background: "var(--primary)",
+    color: "var(--primary-foreground)",
+    fontWeight: 900
+  },
+  secondaryButton: {
+    minHeight: "3.1rem",
+    border: "1px solid var(--border)",
+    borderRadius: "999px",
+    background: "rgba(255, 255, 255, 0.56)",
+    color: "var(--foreground)",
+    fontWeight: 900
+  },
+  actions: {
+    display: "grid",
+    gap: "0.75rem"
+  }
+} satisfies Record<string, CSSProperties>;
+
+function createDraftItemId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `draft-routine-item-${crypto.randomUUID()}`;
+  }
+
+  return `draft-routine-item-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2)}`;
+}
+
+function getDefaultExerciseId(): ExerciseId {
+  return exercises[0]?.id ?? fallbackExerciseId;
+}
+
+function createDraftRoutineItem(): DraftRoutineItem {
+  return {
+    id: createDraftItemId(),
+    exerciseId: getDefaultExerciseId(),
+    sets: 3,
+    targetType: "repetitions",
+    repetitions: 10,
+    durationSeconds: 30,
+    restSecondsBetweenSets: 60
+  };
+}
+
+function buildCreateRoutineItemsInput(
+  items: DraftRoutineItem[]
+): CreateRoutineItemInput[] {
+  return items.map((item): CreateRoutineItemInput => {
+    if (item.targetType === "duration") {
+      return {
+        exerciseId: item.exerciseId,
+        sets: item.sets,
+        target: {
+          type: "duration",
+          seconds: item.durationSeconds
+        },
+        restSecondsBetweenSets: item.restSecondsBetweenSets
+      };
+    }
+
+    return {
+      exerciseId: item.exerciseId,
+      sets: item.sets,
+      target: {
+        type: "repetitions",
+        repetitions: item.repetitions,
+        unitLabel: "repeticiones"
+      },
+      restSecondsBetweenSets: item.restSecondsBetweenSets
+    };
+  });
+}
+
+export function RoutineForm() {
+  const router = useRouter();
+
+  const [title, setTitle] = useState("Mi rutina");
+  const [items, setItems] = useState<DraftRoutineItem[]>(() => [
+    createDraftRoutineItem()
+  ]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  function handleAddItem(): void {
+    setItems((currentItems) => [...currentItems, createDraftRoutineItem()]);
+    setErrorMessage(null);
+  }
+
+  function handleUpdateItem(updatedItem: DraftRoutineItem): void {
+    setItems((currentItems) =>
+      currentItems.map((item) =>
+        item.id === updatedItem.id ? updatedItem : item
+      )
+    );
+    setErrorMessage(null);
+  }
+
+  function handleRemoveItem(itemId: string): void {
+    setItems((currentItems) =>
+      currentItems.filter((item) => item.id !== itemId)
+    );
+  }
+
+  function handleMoveItemUp(itemId: string): void {
+    setItems((currentItems) => {
+      const itemIndex = currentItems.findIndex((item) => item.id === itemId);
+
+      if (itemIndex <= 0) {
+        return currentItems;
+      }
+
+      const nextItems = [...currentItems];
+      const previousItem = nextItems[itemIndex - 1];
+      const currentItem = nextItems[itemIndex];
+
+      if (!previousItem || !currentItem) {
+        return currentItems;
+      }
+
+      nextItems[itemIndex - 1] = currentItem;
+      nextItems[itemIndex] = previousItem;
+
+      return nextItems;
+    });
+  }
+
+  function handleMoveItemDown(itemId: string): void {
+    setItems((currentItems) => {
+      const itemIndex = currentItems.findIndex((item) => item.id === itemId);
+
+      if (itemIndex < 0 || itemIndex >= currentItems.length - 1) {
+        return currentItems;
+      }
+
+      const nextItems = [...currentItems];
+      const currentItem = nextItems[itemIndex];
+      const nextItem = nextItems[itemIndex + 1];
+
+      if (!currentItem || !nextItem) {
+        return currentItems;
+      }
+
+      nextItems[itemIndex] = nextItem;
+      nextItems[itemIndex + 1] = currentItem;
+
+      return nextItems;
+    });
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+
+    const normalizedTitle = title.trim();
+
+    if (normalizedTitle.length === 0) {
+      setErrorMessage("La rutina necesita un nombre.");
+      return;
+    }
+
+    if (items.length === 0) {
+      setErrorMessage("La rutina necesita al menos un ejercicio.");
+      return;
+    }
+
+    createRoutine({
+      title: normalizedTitle,
+      items: buildCreateRoutineItemsInput(items)
+    });
+
+    router.push("/");
+  }
+
+  return (
+    <main style={styles.wrapper}>
+      <header style={styles.topBar}>
+        <Link href="/" style={styles.backLink}>
+          Volver
+        </Link>
+
+        <h1 style={styles.title}>Crear rutina</h1>
+      </header>
+
+      <form style={styles.form} onSubmit={handleSubmit}>
+        <section style={styles.card}>
+          <label style={styles.label}>
+            Nombre de la rutina
+            <input
+              type="text"
+              value={title}
+              style={styles.input}
+              maxLength={80}
+              onChange={(event) => {
+                setTitle(event.currentTarget.value);
+                setErrorMessage(null);
+              }}
+            />
+          </label>
+
+          <p style={styles.helperText}>
+            Elegí los ejercicios, definí series, repeticiones o segundos por
+            serie, y configurá el descanso después de cada serie.
+          </p>
+        </section>
+
+        <section style={styles.card} aria-label="Ejercicios de la rutina">
+          <div style={styles.sectionHeader}>
+            <h2 style={styles.sectionTitle}>Ejercicios</h2>
+
+            <button
+              type="button"
+              style={styles.secondaryButton}
+              onClick={handleAddItem}
+            >
+              Agregar
+            </button>
+          </div>
+
+          {items.length > 0 ? (
+            <div style={styles.itemsList}>
+              {items.map((item, index) => (
+                <RoutineItemEditor
+                  key={item.id}
+                  item={item}
+                  itemIndex={index}
+                  totalItems={items.length}
+                  onChange={handleUpdateItem}
+                  onRemove={handleRemoveItem}
+                  onMoveUp={handleMoveItemUp}
+                  onMoveDown={handleMoveItemDown}
+                />
+              ))}
+            </div>
+          ) : (
+            <p style={styles.emptyState}>
+              Todavía no agregaste ejercicios a esta rutina.
+            </p>
+          )}
+        </section>
+
+        {errorMessage ? <p style={styles.error}>{errorMessage}</p> : null}
+
+        <section style={styles.actions}>
+          <button type="submit" style={styles.button}>
+            Crear rutina
+          </button>
+
+          <button
+            type="button"
+            style={styles.secondaryButton}
+            onClick={handleAddItem}
+          >
+            Agregar otro ejercicio
+          </button>
+        </section>
+      </form>
+    </main>
+  );
+}
+
+export type { DraftRoutineItem };// src/components/routines/RoutineItemEditor.tsx
+
+"use client";
+
+import type { CSSProperties } from "react";
+
+import type { DraftRoutineItem } from "@/components/routines/RoutineForm";
+import { exercises } from "@/data/exercises";
+import type { ExerciseId } from "@/types/exercise";
+import type { RoutineTarget } from "@/types/routine";
+
+type RoutineItemEditorProps = {
+  item: DraftRoutineItem;
+  itemIndex: number;
+  totalItems: number;
+  onChange: (item: DraftRoutineItem) => void;
+  onRemove: (itemId: string) => void;
+  onMoveUp: (itemId: string) => void;
+  onMoveDown: (itemId: string) => void;
+};
+
+const styles = {
+  card: {
+    display: "grid",
+    gap: "0.85rem",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    background: "rgba(255, 255, 255, 0.45)",
+    padding: "0.9rem"
+  },
+  header: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "0.75rem"
+  },
+  title: {
+    margin: 0,
+    fontSize: "0.95rem",
+    fontWeight: 950
+  },
+  orderActions: {
+    display: "flex",
+    gap: "0.35rem"
+  },
+  smallButton: {
+    minHeight: "2.2rem",
+    border: "1px solid var(--border)",
+    borderRadius: "999px",
+    background: "rgba(255, 255, 255, 0.62)",
+    color: "var(--foreground)",
+    padding: "0 0.7rem",
+    fontSize: "0.8rem",
+    fontWeight: 900
+  },
+  grid: {
+    display: "grid",
+    gap: "0.75rem"
+  },
+  twoColumns: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "0.75rem"
+  },
+  label: {
+    display: "grid",
+    gap: "0.4rem",
+    color: "var(--muted)",
+    fontSize: "0.82rem",
+    fontWeight: 850
+  },
+  input: {
+    minHeight: "2.9rem",
+    width: "100%",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-md)",
+    background: "rgba(255, 255, 255, 0.72)",
+    color: "var(--foreground)",
+    padding: "0 0.75rem",
+    fontSize: "0.95rem",
+    fontWeight: 850
+  },
+  removeButton: {
+    minHeight: "2.9rem",
+    width: "100%",
+    border: "1px solid rgba(180, 35, 24, 0.24)",
+    borderRadius: "999px",
+    background: "rgba(180, 35, 24, 0.08)",
+    color: "var(--danger)",
+    fontWeight: 900
+  }
+} satisfies Record<string, CSSProperties>;
+
+function parseNumberInput(value: number, fallbackValue: number): number {
+  if (!Number.isFinite(value)) {
+    return fallbackValue;
+  }
+
+  return Math.round(value);
+}
+
+function parseTargetType(value: string): RoutineTarget["type"] {
+  return value === "duration" ? "duration" : "repetitions";
+}
+
+function parseExerciseId(value: string): ExerciseId {
+  const selectedExercise = exercises.find((exercise) => exercise.id === value);
+
+  return selectedExercise?.id ?? "squats";
+}
+
+export function RoutineItemEditor({
+  item,
+  itemIndex,
+  totalItems,
+  onChange,
+  onRemove,
+  onMoveUp,
+  onMoveDown
+}: RoutineItemEditorProps) {
+  const isFirstItem = itemIndex === 0;
+  const isLastItem = itemIndex === totalItems - 1;
+
+  return (
+    <article style={styles.card}>
+      <header style={styles.header}>
+        <p style={styles.title}>Ejercicio {itemIndex + 1}</p>
+
+        <div style={styles.orderActions}>
+          <button
+            type="button"
+            style={styles.smallButton}
+            onClick={() => {
+              onMoveUp(item.id);
+            }}
+            disabled={isFirstItem}
+          >
+            Subir
+          </button>
+
+          <button
+            type="button"
+            style={styles.smallButton}
+            onClick={() => {
+              onMoveDown(item.id);
+            }}
+            disabled={isLastItem}
+          >
+            Bajar
+          </button>
+        </div>
+      </header>
+
+      <div style={styles.grid}>
+        <label style={styles.label}>
+          Ejercicio
+          <select
+            value={item.exerciseId}
+            style={styles.input}
+            onChange={(event) => {
+              onChange({
+                ...item,
+                exerciseId: parseExerciseId(event.currentTarget.value)
+              });
+            }}
+          >
+            {exercises.map((exercise) => (
+              <option key={exercise.id} value={exercise.id}>
+                {exercise.title}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div style={styles.twoColumns}>
+          <label style={styles.label}>
+            Series
+            <input
+              type="number"
+              min={1}
+              max={99}
+              step={1}
+              value={item.sets}
+              style={styles.input}
+              onChange={(event) => {
+                onChange({
+                  ...item,
+                  sets: parseNumberInput(event.currentTarget.valueAsNumber, 1)
+                });
+              }}
+            />
+          </label>
+
+          <label style={styles.label}>
+            Tipo de objetivo
+            <select
+              value={item.targetType}
+              style={styles.input}
+              onChange={(event) => {
+                onChange({
+                  ...item,
+                  targetType: parseTargetType(event.currentTarget.value)
+                });
+              }}
+            >
+              <option value="repetitions">Repeticiones</option>
+              <option value="duration">Segundos</option>
+            </select>
+          </label>
+        </div>
+
+        <div style={styles.twoColumns}>
+          {item.targetType === "repetitions" ? (
+            <label style={styles.label}>
+              Repeticiones por serie
+              <input
+                type="number"
+                min={1}
+                max={999}
+                step={1}
+                value={item.repetitions}
+                style={styles.input}
+                onChange={(event) => {
+                  onChange({
+                    ...item,
+                    repetitions: parseNumberInput(
+                      event.currentTarget.valueAsNumber,
+                      1
+                    )
+                  });
+                }}
+              />
+            </label>
+          ) : (
+            <label style={styles.label}>
+              Segundos por serie
+              <input
+                type="number"
+                min={1}
+                max={3600}
+                step={1}
+                value={item.durationSeconds}
+                style={styles.input}
+                onChange={(event) => {
+                  onChange({
+                    ...item,
+                    durationSeconds: parseNumberInput(
+                      event.currentTarget.valueAsNumber,
+                      30
+                    )
+                  });
+                }}
+              />
+            </label>
+          )}
+
+          <label style={styles.label}>
+            Descanso después de cada serie
+            <input
+              type="number"
+              min={0}
+              max={3600}
+              step={1}
+              value={item.restSecondsBetweenSets}
+              style={styles.input}
+              onChange={(event) => {
+                onChange({
+                  ...item,
+                  restSecondsBetweenSets: parseNumberInput(
+                    event.currentTarget.valueAsNumber,
+                    0
+                  )
+                });
+              }}
+            />
+          </label>
+        </div>
+
+        <button
+          type="button"
+          style={styles.removeButton}
+          onClick={() => {
+            onRemove(item.id);
+          }}
+        >
+          Eliminar ejercicio
+        </button>
+      </div>
+    </article>
   );
 }// src/components/menu/MainMenu.tsx
 
-import Link from "next/link";
-import type { CSSProperties } from "react";
+"use client";
 
-import { defaultRoutine } from "@/data/routines";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { ChangeEvent, CSSProperties } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import { formatRoutineEstimatedDuration } from "@/lib/routine/estimateRoutineDuration";
+import {
+  getSelectedRoutineId,
+  getUserRoutines,
+  saveSelectedRoutineId
+} from "@/lib/storage/routineStorage";
+import type { Routine } from "@/types/routine";
 
 const styles = {
   wrapper: {
@@ -1279,11 +2063,31 @@ const styles = {
     padding: "1rem",
     boxShadow: "var(--shadow-soft)"
   },
-  linkPrimary: {
+  label: {
+    display: "grid",
+    gap: "0.45rem",
+    color: "var(--muted)",
+    fontSize: "0.88rem",
+    fontWeight: 850
+  },
+  select: {
+    minHeight: "3.2rem",
+    width: "100%",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    background: "rgba(255, 255, 255, 0.62)",
+    color: "var(--foreground)",
+    padding: "0 0.9rem",
+    fontSize: "1rem",
+    fontWeight: 850
+  },
+  buttonPrimary: {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     minHeight: "3.4rem",
+    width: "100%",
+    border: 0,
     borderRadius: "999px",
     background: "var(--primary)",
     color: "var(--primary-foreground)",
@@ -1300,6 +2104,12 @@ const styles = {
     background: "rgba(255, 255, 255, 0.56)",
     fontSize: "0.95rem",
     fontWeight: 800
+  },
+  emptyText: {
+    margin: 0,
+    color: "var(--muted)",
+    fontSize: "0.95rem",
+    lineHeight: 1.45
   },
   meta: {
     display: "grid",
@@ -1325,21 +2135,111 @@ const styles = {
   }
 } satisfies Record<string, CSSProperties>;
 
+function getRoutineTotalSets(routine: Routine | null): number {
+  if (!routine) {
+    return 0;
+  }
+
+  return routine.items.reduce((totalSets, item) => totalSets + item.sets, 0);
+}
+
 export function MainMenu() {
+  const router = useRouter();
+
+  const [routines, setRoutines] = useState<Routine[]>([]);
+  const [selectedRoutineId, setSelectedRoutineId] = useState("");
+
+  useEffect(() => {
+    const storedRoutines = getUserRoutines();
+    const storedSelectedRoutineId = getSelectedRoutineId();
+
+    const selectedRoutine =
+      storedRoutines.find((routine) => routine.id === storedSelectedRoutineId) ??
+      storedRoutines[0] ??
+      null;
+
+    setRoutines(storedRoutines);
+    setSelectedRoutineId(selectedRoutine?.id ?? "");
+
+    if (selectedRoutine) {
+      saveSelectedRoutineId(selectedRoutine.id);
+    }
+  }, []);
+
+  const selectedRoutine = useMemo(
+    () => routines.find((routine) => routine.id === selectedRoutineId) ?? null,
+    [routines, selectedRoutineId]
+  );
+
+  const selectedRoutineTotalSets = useMemo(
+    () => getRoutineTotalSets(selectedRoutine),
+    [selectedRoutine]
+  );
+
+  function handleRoutineChange(event: ChangeEvent<HTMLSelectElement>): void {
+    const nextRoutineId = event.currentTarget.value;
+
+    setSelectedRoutineId(nextRoutineId);
+
+    if (nextRoutineId) {
+      saveSelectedRoutineId(nextRoutineId);
+    }
+  }
+
+  function handleStartRoutine(): void {
+    if (!selectedRoutine) {
+      return;
+    }
+
+    saveSelectedRoutineId(selectedRoutine.id);
+    router.push("/routine");
+  }
+
   return (
     <main style={styles.wrapper}>
       <header style={styles.header}>
-        <p style={styles.eyebrow}>Rutina home</p>
+        <p style={styles.eyebrow}>Rutinas personalizadas</p>
         <h1 style={styles.title}>App de ejercicios</h1>
         <p style={styles.description}>
-          Seguí tu rutina paso por paso, registrá tus entrenamientos y medí si
-          estás cumpliendo tu objetivo semanal.
+          Creá tus propias rutinas, elegí ejercicios, configurá series,
+          repeticiones o segundos por serie y registrá tus entrenamientos.
         </p>
       </header>
 
       <section style={styles.card} aria-label="Menú principal">
-        <Link href="/routine" style={styles.linkPrimary}>
+        {routines.length > 0 ? (
+          <label style={styles.label}>
+            Rutina
+            <select
+              value={selectedRoutineId}
+              style={styles.select}
+              onChange={handleRoutineChange}
+            >
+              {routines.map((routine) => (
+                <option key={routine.id} value={routine.id}>
+                  {routine.title}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <p style={styles.emptyText}>
+            Todavía no tenés rutinas creadas. Creá tu primera rutina para
+            comenzar.
+          </p>
+        )}
+
+        <button
+          type="button"
+          style={styles.buttonPrimary}
+          onClick={handleStartRoutine}
+          disabled={!selectedRoutine}
+        >
           Comenzar rutina
+        </button>
+
+        <Link href="/routines/new" style={styles.linkSecondary}>
+          Crear rutina
         </Link>
 
         <Link href="/stats" style={styles.linkSecondary}>
@@ -1353,18 +2253,22 @@ export function MainMenu() {
 
       <section style={styles.meta} aria-label="Resumen de la rutina">
         <article style={styles.metaItem}>
-          <p style={styles.metaValue}>
-            {defaultRoutine.idealSessionsPerWeek}x
-          </p>
-          <p style={styles.metaLabel}>por semana</p>
+          <p style={styles.metaValue}>{selectedRoutine?.items.length ?? 0}</p>
+          <p style={styles.metaLabel}>ejercicios</p>
+        </article>
+
+        <article style={styles.metaItem}>
+          <p style={styles.metaValue}>{selectedRoutineTotalSets}</p>
+          <p style={styles.metaLabel}>series</p>
         </article>
 
         <article style={styles.metaItem}>
           <p style={styles.metaValue}>
-            {defaultRoutine.estimatedDurationMinutes.min}-
-            {defaultRoutine.estimatedDurationMinutes.max}m
+            {selectedRoutine
+              ? formatRoutineEstimatedDuration(selectedRoutine)
+              : "-"}
           </p>
-          <p style={styles.metaLabel}>duración</p>
+          <p style={styles.metaLabel}>duración aprox.</p>
         </article>
       </section>
     </main>
@@ -1578,8 +2482,8 @@ export function StatsDashboard() {
         </section>
       </section>
 
-      <Link href="/routine" style={styles.linkButton}>
-        Comenzar rutina
+      <Link href="/" style={styles.linkButton}>
+        Volver al menú
       </Link>
     </main>
   );
@@ -1752,50 +2656,42 @@ export function getFallbackExerciseImage(): string {
 }// src/lib/routine/formatRoutineTarget.ts
 
 import type {
-    RoutineDurationTarget,
-    RoutineExerciseStep,
-    RoutineRepetitionTarget,
-    RoutineTarget
+  RoutineDurationTarget,
+  RoutineExerciseStep,
+  RoutineRepetitionTarget,
+  RoutineTarget
 } from "@/types/routine";
 
 function formatRepetitionTarget(target: RoutineRepetitionTarget): string {
-    if (target.minReps === target.maxReps) {
-        return `${target.minReps} ${target.unitLabel}`;
-    }
-
-    return `${target.minReps} a ${target.maxReps} ${target.unitLabel}`;
+  return `${target.repetitions} ${target.unitLabel}`;
 }
 
 function formatDurationTarget(target: RoutineDurationTarget): string {
-    if (target.minSeconds === target.maxSeconds) {
-        return `${target.minSeconds} segundos`;
-    }
-
-    return `${target.minSeconds} a ${target.maxSeconds} segundos`;
+  return `${target.seconds} segundos`;
 }
 
 export function formatRoutineTarget(target: RoutineTarget): string {
-    if (target.type === "duration") {
-        return formatDurationTarget(target);
-    }
+  if (target.type === "duration") {
+    return formatDurationTarget(target);
+  }
 
-    return formatRepetitionTarget(target);
+  return formatRepetitionTarget(target);
 }
 
 export function getRoutineExerciseInstruction(
-    step: RoutineExerciseStep
+  step: RoutineExerciseStep
 ): string {
-    if (step.target.type === "duration") {
-        return `Mantené ${step.exercise.shortTitle.toLowerCase()} durante ${formatRoutineTarget(
-            step.target
-        )}.`;
-    }
+  if (step.target.type === "duration") {
+    return `Mantené ${step.exercise.shortTitle.toLowerCase()} durante ${formatRoutineTarget(
+      step.target
+    )}.`;
+  }
 
-    return `Realizá ${formatRoutineTarget(step.target)}.`;
+  return `Realizá ${formatRoutineTarget(step.target)}.`;
 }
 
 export function getRoutineRestInstruction(durationSeconds: number): string {
-    return `Descansá ${durationSeconds} segundos.`;
+  return `Descansá ${durationSeconds} segundos.`;
 }// src/lib/routine/routineProgress.ts
 
 import type { RoutineStep } from "@/types/routine";
@@ -1863,36 +2759,108 @@ export function isLastStep(
   currentStepIndex: number
 ): boolean {
   return currentStepIndex === steps.length - 1;
+}// src/lib/routine/estimateRoutineDuration.ts
+
+import type { Routine, RoutineItem, RoutineTarget } from "@/types/routine";
+
+const estimatedSecondsPerRepetition = 3;
+
+function getTargetEstimatedSeconds(target: RoutineTarget): number {
+  if (target.type === "duration") {
+    return target.seconds;
+  }
+
+  return target.repetitions * estimatedSecondsPerRepetition;
+}
+
+function getRoutineItemRestCount(
+  item: RoutineItem,
+  itemIndex: number,
+  totalItems: number
+): number {
+  const isLastRoutineItem = itemIndex === totalItems - 1;
+
+  if (isLastRoutineItem) {
+    return Math.max(item.sets - 1, 0);
+  }
+
+  return item.sets;
+}
+
+export function getRoutineEstimatedDurationSeconds(routine: Routine): number {
+  return routine.items.reduce((totalSeconds, item, itemIndex) => {
+    const exerciseSeconds = getTargetEstimatedSeconds(item.target) * item.sets;
+    const restCount = getRoutineItemRestCount(
+      item,
+      itemIndex,
+      routine.items.length
+    );
+    const restSeconds = restCount * item.restSecondsBetweenSets;
+
+    return totalSeconds + exerciseSeconds + restSeconds;
+  }, 0);
+}
+
+export function getRoutineEstimatedDurationMinutes(routine: Routine): number {
+  const durationSeconds = getRoutineEstimatedDurationSeconds(routine);
+
+  if (durationSeconds <= 0) {
+    return 0;
+  }
+
+  return Math.max(1, Math.ceil(durationSeconds / 60));
+}
+
+export function formatRoutineEstimatedDuration(routine: Routine): string {
+  const estimatedMinutes = getRoutineEstimatedDurationMinutes(routine);
+
+  if (estimatedMinutes === 0) {
+    return "0 min";
+  }
+
+  return `${estimatedMinutes} min`;
 }// src/lib/routine/buildRoutineSteps.ts
 
 import { getExerciseById } from "@/data/exercises";
 import type { Routine, RoutineStep } from "@/types/routine";
 
 export function buildRoutineSteps(routine: Routine): RoutineStep[] {
-  return routine.items.flatMap((item) => {
+  return routine.items.flatMap((item, itemIndex) => {
     const exercise = getExerciseById(item.exerciseId);
+    const exerciseStepNumber = itemIndex + 1;
+    const totalExerciseSteps = routine.items.length;
     const steps: RoutineStep[] = [];
 
     for (let setNumber = 1; setNumber <= item.sets; setNumber += 1) {
       steps.push({
         id: `${item.id}-set-${setNumber}`,
         type: "exercise",
+        routineItemId: item.id,
         exerciseId: item.exerciseId,
         exercise,
+        exerciseStepNumber,
+        totalExerciseSteps,
         setNumber,
         totalSets: item.sets,
         target: item.target
       });
 
-      const shouldAddRestStep = setNumber < item.sets;
+      const isLastRoutineItem = itemIndex === routine.items.length - 1;
+      const isLastSet = setNumber === item.sets;
+      const isLastAbsoluteSet = isLastRoutineItem && isLastSet;
+      const shouldAddRestStep =
+        !isLastAbsoluteSet && item.restSecondsBetweenSets > 0;
 
       if (shouldAddRestStep) {
         steps.push({
           id: `${item.id}-rest-after-set-${setNumber}`,
           type: "rest",
+          routineItemId: item.id,
           exerciseId: item.exerciseId,
           exercise,
-          durationSeconds: item.restSeconds,
+          durationSeconds: item.restSecondsBetweenSets,
+          afterExerciseStepNumber: exerciseStepNumber,
+          totalExerciseSteps,
           afterSetNumber: setNumber,
           totalSets: item.sets
         });
@@ -2043,7 +3011,8 @@ export function hasTrainingSessionToday(stats: TrainingStats): boolean {
 export const localStorageKeys = {
   trainingStats: "exerciseRoutineApp.trainingStats.v1",
   weeklyGoal: "exerciseRoutineApp.weeklyGoal.v1",
-  routineProgress: "exerciseRoutineApp.routineProgress.v1"
+  userRoutines: "exerciseRoutineApp.userRoutines.v1",
+  selectedRoutineId: "exerciseRoutineApp.selectedRoutineId.v1"
 } as const;// src/lib/storage/goalStorage.ts
 
 import { localStorageKeys } from "@/lib/storage/localStorageKeys";
@@ -2141,6 +3110,418 @@ export function resetWeeklyGoal(): WeeklyGoal {
   saveWeeklyGoal(weeklyGoal);
 
   return weeklyGoal;
+}// src/lib/storage/routineStorage.ts
+
+import { exerciseIds, type ExerciseId } from "@/types/exercise";
+import type {
+  CreateRoutineInput,
+  CreateRoutineItemInput,
+  Routine,
+  RoutineDurationTarget,
+  RoutineItem,
+  RoutineRepetitionTarget,
+  RoutineTarget
+} from "@/types/routine";
+
+import { localStorageKeys } from "@/lib/storage/localStorageKeys";
+
+const minSets = 1;
+const maxSets = 99;
+const defaultSets = 3;
+
+const minRepetitions = 1;
+const maxRepetitions = 999;
+const minDurationSeconds = 1;
+const maxDurationSeconds = 3600;
+const minRestSeconds = 0;
+const maxRestSeconds = 3600;
+
+const defaultRoutineTitle = "Mi rutina";
+const defaultUnitLabel = "repeticiones";
+
+const validExerciseIds = new Set<ExerciseId>(exerciseIds);
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+function isExerciseId(value: unknown): value is ExerciseId {
+  return isString(value) && validExerciseIds.has(value as ExerciseId);
+}
+
+function isIntegerInRange(
+  value: unknown,
+  minValue: number,
+  maxValue: number
+): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= minValue &&
+    value <= maxValue
+  );
+}
+
+function clampInteger(
+  value: number,
+  minValue: number,
+  maxValue: number,
+  fallbackValue: number
+): number {
+  if (!Number.isFinite(value)) {
+    return fallbackValue;
+  }
+
+  const roundedValue = Math.round(value);
+
+  return Math.min(Math.max(roundedValue, minValue), maxValue);
+}
+
+function normalizeText(value: string, fallbackValue: string): string {
+  const normalizedValue = value.trim();
+
+  return normalizedValue.length > 0 ? normalizedValue : fallbackValue;
+}
+
+function createId(prefix: string): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function isRoutineRepetitionTarget(
+  value: unknown
+): value is RoutineRepetitionTarget {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    value.type === "repetitions" &&
+    isIntegerInRange(value.repetitions, minRepetitions, maxRepetitions) &&
+    isString(value.unitLabel)
+  );
+}
+
+function isRoutineDurationTarget(value: unknown): value is RoutineDurationTarget {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    value.type === "duration" &&
+    isIntegerInRange(value.seconds, minDurationSeconds, maxDurationSeconds)
+  );
+}
+
+function isRoutineTarget(value: unknown): value is RoutineTarget {
+  return isRoutineRepetitionTarget(value) || isRoutineDurationTarget(value);
+}
+
+function normalizeRoutineTarget(target: RoutineTarget): RoutineTarget {
+  if (target.type === "duration") {
+    return {
+      type: "duration",
+      seconds: clampInteger(
+        target.seconds,
+        minDurationSeconds,
+        maxDurationSeconds,
+        minDurationSeconds
+      )
+    };
+  }
+
+  return {
+    type: "repetitions",
+    repetitions: clampInteger(
+      target.repetitions,
+      minRepetitions,
+      maxRepetitions,
+      minRepetitions
+    ),
+    unitLabel: normalizeText(target.unitLabel, defaultUnitLabel)
+  };
+}
+
+function getRestSecondsBetweenSets(value: Record<string, unknown>): number {
+  if (
+    isIntegerInRange(
+      value.restSecondsBetweenSets,
+      minRestSeconds,
+      maxRestSeconds
+    )
+  ) {
+    return value.restSecondsBetweenSets;
+  }
+
+  if (isIntegerInRange(value.restSecondsAfter, minRestSeconds, maxRestSeconds)) {
+    return value.restSecondsAfter;
+  }
+
+  return minRestSeconds;
+}
+
+function parseRoutineItem(value: unknown): RoutineItem | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  if (
+    !isString(value.id) ||
+    !isExerciseId(value.exerciseId) ||
+    !isRoutineTarget(value.target)
+  ) {
+    return null;
+  }
+
+  const sets = isIntegerInRange(value.sets, minSets, maxSets)
+    ? value.sets
+    : defaultSets;
+
+  return {
+    id: value.id,
+    exerciseId: value.exerciseId,
+    sets,
+    target: normalizeRoutineTarget(value.target),
+    restSecondsBetweenSets: getRestSecondsBetweenSets(value)
+  };
+}
+
+function parseRoutine(value: unknown): Routine | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  if (
+    !isString(value.id) ||
+    !isString(value.title) ||
+    !isString(value.createdAt) ||
+    !isString(value.updatedAt) ||
+    !Array.isArray(value.items)
+  ) {
+    return null;
+  }
+
+  const items = value.items
+    .map((item) => parseRoutineItem(item))
+    .filter((item): item is RoutineItem => item !== null);
+
+  return {
+    id: value.id,
+    title: normalizeText(value.title, defaultRoutineTitle),
+    createdAt: value.createdAt,
+    updatedAt: value.updatedAt,
+    items
+  };
+}
+
+function normalizeRoutineItemInput(
+  itemInput: CreateRoutineItemInput
+): RoutineItem {
+  return {
+    id: createId("routine-item"),
+    exerciseId: itemInput.exerciseId,
+    sets: clampInteger(itemInput.sets, minSets, maxSets, defaultSets),
+    target: normalizeRoutineTarget(itemInput.target),
+    restSecondsBetweenSets: clampInteger(
+      itemInput.restSecondsBetweenSets,
+      minRestSeconds,
+      maxRestSeconds,
+      minRestSeconds
+    )
+  };
+}
+
+function normalizeRoutineItem(item: RoutineItem): RoutineItem {
+  return {
+    id: normalizeText(item.id, createId("routine-item")),
+    exerciseId: item.exerciseId,
+    sets: clampInteger(item.sets, minSets, maxSets, defaultSets),
+    target: normalizeRoutineTarget(item.target),
+    restSecondsBetweenSets: clampInteger(
+      item.restSecondsBetweenSets,
+      minRestSeconds,
+      maxRestSeconds,
+      minRestSeconds
+    )
+  };
+}
+
+function createEmptyRoutineList(): Routine[] {
+  return [];
+}
+
+function readRawUserRoutines(): unknown {
+  if (typeof window === "undefined") {
+    return createEmptyRoutineList();
+  }
+
+  const rawValue = window.localStorage.getItem(localStorageKeys.userRoutines);
+
+  if (!rawValue) {
+    return createEmptyRoutineList();
+  }
+
+  try {
+    return JSON.parse(rawValue) as unknown;
+  } catch {
+    return createEmptyRoutineList();
+  }
+}
+
+export function getUserRoutines(): Routine[] {
+  const parsedValue = readRawUserRoutines();
+
+  if (!Array.isArray(parsedValue)) {
+    return createEmptyRoutineList();
+  }
+
+  return parsedValue
+    .map((routine) => parseRoutine(routine))
+    .filter((routine): routine is Routine => routine !== null);
+}
+
+export function saveUserRoutines(routines: Routine[]): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(
+    localStorageKeys.userRoutines,
+    JSON.stringify(routines)
+  );
+
+  const selectedRoutineId = getSelectedRoutineId();
+
+  if (
+    selectedRoutineId &&
+    !routines.some((routine) => routine.id === selectedRoutineId)
+  ) {
+    clearSelectedRoutineId();
+  }
+}
+
+export function getRoutineById(routineId: string): Routine | null {
+  const routines = getUserRoutines();
+
+  return routines.find((routine) => routine.id === routineId) ?? null;
+}
+
+export function createRoutine(input: CreateRoutineInput): Routine {
+  const now = new Date().toISOString();
+  const routines = getUserRoutines();
+
+  const routine: Routine = {
+    id: createId("routine"),
+    title: normalizeText(input.title, defaultRoutineTitle),
+    createdAt: now,
+    updatedAt: now,
+    items: input.items.map((itemInput) => normalizeRoutineItemInput(itemInput))
+  };
+
+  saveUserRoutines([...routines, routine]);
+  saveSelectedRoutineId(routine.id);
+
+  return routine;
+}
+
+export function updateRoutine(routine: Routine): Routine | null {
+  const routines = getUserRoutines();
+  const routineIndex = routines.findIndex(
+    (storedRoutine) => storedRoutine.id === routine.id
+  );
+
+  if (routineIndex < 0) {
+    return null;
+  }
+
+  const previousRoutine = routines[routineIndex];
+
+  if (!previousRoutine) {
+    return null;
+  }
+
+  const updatedRoutine: Routine = {
+    id: previousRoutine.id,
+    title: normalizeText(routine.title, defaultRoutineTitle),
+    createdAt: previousRoutine.createdAt,
+    updatedAt: new Date().toISOString(),
+    items: routine.items.map((item) => normalizeRoutineItem(item))
+  };
+
+  const updatedRoutines = [...routines];
+
+  updatedRoutines[routineIndex] = updatedRoutine;
+
+  saveUserRoutines(updatedRoutines);
+
+  return updatedRoutine;
+}
+
+export function deleteRoutine(routineId: string): void {
+  const routines = getUserRoutines();
+  const updatedRoutines = routines.filter((routine) => routine.id !== routineId);
+
+  saveUserRoutines(updatedRoutines);
+
+  if (getSelectedRoutineId() === routineId) {
+    const fallbackRoutine = updatedRoutines[0] ?? null;
+
+    if (fallbackRoutine) {
+      saveSelectedRoutineId(fallbackRoutine.id);
+      return;
+    }
+
+    clearSelectedRoutineId();
+  }
+}
+
+export function getSelectedRoutineId(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const selectedRoutineId = window.localStorage.getItem(
+    localStorageKeys.selectedRoutineId
+  );
+
+  if (!selectedRoutineId) {
+    return null;
+  }
+
+  return selectedRoutineId;
+}
+
+export function saveSelectedRoutineId(routineId: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(localStorageKeys.selectedRoutineId, routineId);
+}
+
+export function clearSelectedRoutineId(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(localStorageKeys.selectedRoutineId);
+}
+
+export function getSelectedRoutine(): Routine | null {
+  const selectedRoutineId = getSelectedRoutineId();
+
+  if (!selectedRoutineId) {
+    return null;
+  }
+
+  return getRoutineById(selectedRoutineId);
 }// src/lib/stats/statsCalculations.ts
 
 import {
@@ -2318,140 +3699,7 @@ export function getLastTrainingDateKey(stats: TrainingStats): string | null {
     const dateKeys = getTrainingDateKeys(stats);
 
     return dateKeys[0] ?? null;
-}// src/data/routines/index.ts
-
-import { defaultRoutine } from "@/data/routines/defaultRoutine";
-
-export const routines = [defaultRoutine] as const;
-
-export { defaultRoutine };// src/data/routines/defaultRoutine.ts
-
-import type { Routine } from "@/types/routine";
-
-export const defaultRoutine: Routine = {
-  id: "home-routine",
-  title: "Rutina home",
-  description:
-    "Rutina full body para hacer en casa, combinando peso corporal, silla y aro de pilates.",
-  idealSessionsPerWeek: 3,
-  estimatedDurationMinutes: {
-    min: 30,
-    max: 40
-  },
-  defaultRestSecondsRange: {
-    minSeconds: 60,
-    maxSeconds: 90
-  },
-  items: [
-    {
-      id: "home-routine-squats",
-      exerciseId: "squats",
-      sets: 3,
-      target: {
-        type: "repetitions",
-        minReps: 12,
-        maxReps: 20,
-        unitLabel: "sentadillas"
-      },
-      restSeconds: 90
-    },
-    {
-      id: "home-routine-push-ups",
-      exerciseId: "push-ups",
-      sets: 3,
-      target: {
-        type: "repetitions",
-        minReps: 8,
-        maxReps: 15,
-        unitLabel: "flexiones"
-      },
-      restSeconds: 90
-    },
-    {
-      id: "home-routine-pilates-ring-row",
-      exerciseId: "pilates-ring-row",
-      sets: 3,
-      target: {
-        type: "repetitions",
-        minReps: 12,
-        maxReps: 15,
-        unitLabel: "repeticiones"
-      },
-      restSeconds: 90
-    },
-    {
-      id: "home-routine-chair-dips",
-      exerciseId: "chair-dips",
-      sets: 3,
-      target: {
-        type: "repetitions",
-        minReps: 10,
-        maxReps: 15,
-        unitLabel: "fondos"
-      },
-      restSeconds: 90
-    },
-    {
-      id: "home-routine-pilates-ring-overhead-press",
-      exerciseId: "pilates-ring-overhead-press",
-      sets: 3,
-      target: {
-        type: "repetitions",
-        minReps: 15,
-        maxReps: 20,
-        unitLabel: "apretones"
-      },
-      restSeconds: 90
-    },
-    {
-      id: "home-routine-pilates-ring-front-press",
-      exerciseId: "pilates-ring-front-press",
-      sets: 3,
-      target: {
-        type: "repetitions",
-        minReps: 15,
-        maxReps: 20,
-        unitLabel: "apretones"
-      },
-      restSeconds: 90
-    },
-    {
-      id: "home-routine-plank",
-      exerciseId: "plank",
-      sets: 3,
-      target: {
-        type: "duration",
-        minSeconds: 30,
-        maxSeconds: 60
-      },
-      restSeconds: 90
-    },
-    {
-      id: "home-routine-standing-pilates-ring-knee-press",
-      exerciseId: "standing-pilates-ring-knee-press",
-      sets: 3,
-      target: {
-        type: "repetitions",
-        minReps: 20,
-        maxReps: 20,
-        unitLabel: "apretones"
-      },
-      restSeconds: 90
-    },
-    {
-      id: "home-routine-standing-calf-raises",
-      exerciseId: "standing-calf-raises",
-      sets: 3,
-      target: {
-        type: "repetitions",
-        minReps: 20,
-        maxReps: 20,
-        unitLabel: "repeticiones"
-      },
-      restSeconds: 90
-    }
-  ]
-};// src/data/exercises/standingPilatesRingKneePress.ts
+}// src/data/exercises/standingPilatesRingKneePress.ts
 
 import type { Exercise } from "@/types/exercise";
 
@@ -2461,28 +3709,21 @@ export const standingPilatesRingKneePress: Exercise = {
   shortTitle: "Aro entre rodillas",
   category: "legs",
   equipment: ["pilates-ring"],
+  instruction:
+    "Colocá el aro entre las rodillas, mantené los pies paralelos y flexioná apenas las piernas. Apretá el aro hacia adentro con control, activando aductores y glúteos sin perder la postura estable.",
+  workedMuscles: {
+    primary: ["aductores", "glúteos"],
+    secondary: ["cuádriceps", "core", "isquiotibiales"]
+  },
   positions: [
     {
       id: "standing-pilates-ring-knee-press-start",
       title: "Posición inicial",
-      description: [
-        "De pie",
-        "Aro entre rodillas",
-        "Pies paralelos",
-        "Rodillas apenas flexionadas"
-      ],
       imagePath: "/exercises/standing-pilates-ring-knee-press/01-start.png"
     },
     {
       id: "standing-pilates-ring-knee-press-press",
       title: "Presión",
-      description: [
-        "Rodillas apretando hacia adentro",
-        "Glúteos y aductores activos",
-        "Aro comprimido",
-        "Postura estable",
-        "Core firme"
-      ],
       imagePath: "/exercises/standing-pilates-ring-knee-press/02-press.png"
     }
   ]
@@ -2496,16 +3737,16 @@ export const plank: Exercise = {
   shortTitle: "Plancha",
   category: "core",
   equipment: ["bodyweight"],
+  instruction:
+    "Apoyá los antebrazos en el piso y mantené el cuerpo en línea recta desde la cabeza hasta los talones. Activá abdomen y glúteos, evitando que la cadera caiga o se eleve demasiado.",
+  workedMuscles: {
+    primary: ["recto abdominal", "transverso abdominal", "oblicuos"],
+    secondary: ["glúteos", "deltoides", "espalda baja"]
+  },
   positions: [
     {
       id: "plank-correct",
       title: "Posición correcta",
-      description: [
-        "Antebrazos en el piso",
-        "Cuerpo recto",
-        "Glúteos alineados",
-        "Abdomen firme"
-      ],
       imagePath: "/exercises/plank/01-correct.png"
     }
   ]
@@ -2519,27 +3760,21 @@ export const standingCalfRaises: Exercise = {
   shortTitle: "Calf Raises",
   category: "legs",
   equipment: ["bodyweight"],
+  instruction:
+    "Parate con la espalda estable y los pies apoyados en el suelo. Elevá los talones hasta quedar sobre la punta de los pies, contraé las pantorrillas arriba y bajá lentamente sin perder el equilibrio.",
+  workedMuscles: {
+    primary: ["gemelos", "sóleo"],
+    secondary: ["tibial posterior", "peroneos", "core"]
+  },
   positions: [
     {
       id: "standing-calf-raises-start",
       title: "Posición inicial",
-      description: [
-        "De pie",
-        "Talones apoyados",
-        "Espalda recta"
-      ],
       imagePath: "/exercises/standing-calf-raises/01-start.png"
     },
     {
       id: "standing-calf-raises-up",
       title: "Elevación",
-      description: [
-        "Subir talones",
-        "Peso sobre punta de pies",
-        "Tobillos extendidos",
-        "Pantorrillas contraídas",
-        "Equilibrio controlado"
-      ],
       imagePath: "/exercises/standing-calf-raises/02-up.png"
     }
   ]
@@ -2553,30 +3788,21 @@ export const squats: Exercise = {
   shortTitle: "Sentadillas",
   category: "legs",
   equipment: ["bodyweight"],
+  instruction:
+    "Colocá los pies al ancho de hombros, llevá la cadera hacia atrás y bajá con control manteniendo la espalda estable. Empujá desde los talones para volver a subir, evitando que las rodillas colapsen hacia adentro.",
+  workedMuscles: {
+    primary: ["cuádriceps", "glúteos"],
+    secondary: ["isquiotibiales", "core", "pantorrillas"]
+  },
   positions: [
     {
       id: "squats-start",
       title: "Posición inicial",
-      description: [
-        "De pie",
-        "Pies al ancho de hombros",
-        "Punta de pies apenas hacia afuera",
-        "Espalda recta",
-        "Pecho abierto",
-        "Brazos al frente o cruzados"
-      ],
       imagePath: "/exercises/squats/01-start.png"
     },
     {
       id: "squats-down",
       title: "Bajada",
-      description: [
-        "Cadera hacia atrás como sentándose",
-        "Rodillas doblándose siguiendo la línea de los pies",
-        "Muslos acercándose a paralelo con el suelo",
-        "Talones apoyados",
-        "Tronco ligeramente inclinado pero recto"
-      ],
       imagePath: "/exercises/squats/02-down.png"
     }
   ]
@@ -2590,27 +3816,21 @@ export const pilatesRingOverheadPress: Exercise = {
   shortTitle: "Overhead Press",
   category: "shoulders",
   equipment: ["pilates-ring"],
+  instruction:
+    "Sostené el aro por encima de la cabeza con los codos apenas flexionados y los hombros lejos de las orejas. Apretá el aro hacia adentro con control, manteniendo el abdomen firme y la espalda neutra.",
+  workedMuscles: {
+    primary: ["deltoides", "trapecio superior"],
+    secondary: ["tríceps", "pectorales", "core"]
+  },
   positions: [
     {
       id: "pilates-ring-overhead-press-start",
       title: "Posición inicial",
-      description: [
-        "Aro arriba de la cabeza",
-        "Brazos elevados",
-        "Codos apenas flexionados"
-      ],
       imagePath: "/exercises/pilates-ring-overhead-press/01-start.png"
     },
     {
       id: "pilates-ring-overhead-press-press",
       title: "Presión",
-      description: [
-        "Apretar el aro hacia adentro",
-        "Mantener hombros bajos",
-        "Core firme",
-        "Presión sostenida",
-        "Espalda neutra"
-      ],
       imagePath: "/exercises/pilates-ring-overhead-press/02-press.png"
     }
   ]
@@ -2619,34 +3839,29 @@ export const pilatesRingOverheadPress: Exercise = {
 import type { Exercise } from "@/types/exercise";
 
 export const pushUps: Exercise = {
-    id: "push-ups",
-    title: "Push-Ups / Flexiones",
-    shortTitle: "Flexiones",
-    category: "chest",
-    equipment: ["bodyweight"],
-    positions: [
-        {
-            id: "push-ups-top",
-            title: "Posición alta",
-            description: [
-                "Manos debajo de hombros",
-                "Cuerpo recto",
-                "Core apretado",
-                "Piernas extendidas"
-            ],
-            imagePath: "/exercises/push-ups/01-top.png"
-        },
-        {
-            id: "push-ups-down",
-            title: "Bajada",
-            description: [
-                "Codos flexionados hacia atrás o en diagonal",
-                "Pecho acercándose al piso",
-                "El cuerpo sigue recto"
-            ],
-            imagePath: "/exercises/push-ups/02-down.png"
-        }
-    ]
+  id: "push-ups",
+  title: "Push-Ups / Flexiones",
+  shortTitle: "Flexiones",
+  category: "chest",
+  equipment: ["bodyweight"],
+  instruction:
+    "Apoyá las manos debajo de los hombros y mantené el cuerpo en línea recta. Bajá el pecho hacia el piso con control, llevando los codos hacia atrás o en diagonal, y empujá el suelo para volver a la posición alta.",
+  workedMuscles: {
+    primary: ["pectorales", "tríceps"],
+    secondary: ["deltoides anteriores", "core", "serrato anterior"]
+  },
+  positions: [
+    {
+      id: "push-ups-top",
+      title: "Posición alta",
+      imagePath: "/exercises/push-ups/01-top.png"
+    },
+    {
+      id: "push-ups-down",
+      title: "Bajada",
+      imagePath: "/exercises/push-ups/02-down.png"
+    }
+  ]
 };// src/data/exercises/pilatesRingRow.ts
 
 import type { Exercise } from "@/types/exercise";
@@ -2657,28 +3872,21 @@ export const pilatesRingRow: Exercise = {
   shortTitle: "Ring Row",
   category: "back",
   equipment: ["pilates-ring"],
+  instruction:
+    "Sostené el aro frente al pecho con los hombros relajados y el torso estable. Llevá los codos hacia atrás como si quisieras juntar los omóplatos, manteniendo tensión en el aro y volviendo con control.",
+  workedMuscles: {
+    primary: ["romboides", "trapecio medio", "dorsal ancho"],
+    secondary: ["deltoides posteriores", "bíceps", "core"]
+  },
   positions: [
     {
       id: "pilates-ring-row-start",
       title: "Posición inicial",
-      description: [
-        "De pie",
-        "Aro frente al pecho",
-        "Brazos semiflexionados",
-        "Hombros relajados"
-      ],
       imagePath: "/exercises/pilates-ring-row/01-start.png"
     },
     {
       id: "pilates-ring-row-pull",
       title: "Tirón / apertura",
-      description: [
-        "Codos yendo hacia atrás",
-        "Omóplatos juntándose",
-        "Pecho abierto",
-        "Aro abriéndose con tensión",
-        "Pausa breve apretando espalda"
-      ],
       imagePath: "/exercises/pilates-ring-row/02-pull.png"
     }
   ]
@@ -2744,26 +3952,21 @@ export const chairDips: Exercise = {
   shortTitle: "Fondos con silla",
   category: "arms",
   equipment: ["bodyweight", "chair"],
+  instruction:
+    "Apoyá las manos en el borde de la silla y dejá la cadera apenas por delante del asiento. Bajá el cuerpo flexionando los codos hacia atrás y empujá con los brazos para volver a subir, manteniendo el movimiento controlado.",
+  workedMuscles: {
+    primary: ["tríceps"],
+    secondary: ["pectorales", "deltoides anteriores", "core"]
+  },
   positions: [
     {
       id: "chair-dips-top",
       title: "Posición inicial",
-      description: [
-        "Manos apoyadas en borde de silla",
-        "Brazos extendidos",
-        "Cadera fuera de la silla",
-        "Piernas flexionadas o extendidas"
-      ],
       imagePath: "/exercises/chair-dips/01-top.png"
     },
     {
       id: "chair-dips-down",
       title: "Bajada",
-      description: [
-        "Codos doblándose hacia atrás",
-        "Cuerpo descendiendo recto",
-        "Hombros bajan hasta aproximadamente 90 grados"
-      ],
       imagePath: "/exercises/chair-dips/02-down.png"
     }
   ]
@@ -2777,30 +3980,22 @@ export const pilatesRingFrontPress: Exercise = {
   shortTitle: "Front Press",
   category: "chest",
   equipment: ["pilates-ring"],
+  instruction:
+    "Sostené el aro frente al pecho o al abdomen con los brazos extendidos de forma cómoda. Apretá el aro lentamente hacia adentro, activando pecho y brazos, y volvé a soltar la presión sin perder el control.",
+  workedMuscles: {
+    primary: ["pectorales"],
+    secondary: ["deltoides anteriores", "tríceps", "core"]
+  },
   positions: [
     {
       id: "pilates-ring-front-press-start",
       title: "Posición inicial",
-      description: [
-        "Aro frente al abdomen o pecho bajo",
-        "Brazos al frente",
-        "Postura recta"
-      ],
       imagePath: "/exercises/pilates-ring-front-press/01-start.png"
     },
     {
       id: "pilates-ring-front-press-press",
       title: "Presión",
-      description: [
-        "Apretar el aro lentamente",
-        "Pecho y brazos activos",
-        "Codos suaves",
-        "Core contraído",
-        "Respiración controlada"
-      ],
       imagePath: "/exercises/pilates-ring-front-press/02-press.png"
     }
   ]
-};// src/data/defaultRoutine.ts
-
-export { defaultRoutine } from "@/data/routines";
+};

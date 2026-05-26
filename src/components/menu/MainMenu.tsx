@@ -4,7 +4,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ChangeEvent, CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 import { formatRoutineEstimatedDuration } from "@/lib/routine/estimateRoutineDuration";
@@ -21,11 +21,15 @@ const styles = {
     minHeight: "100vh",
     flexDirection: "column",
     justifyContent: "center",
-    gap: "1.25rem"
+    gap: "1.25rem",
+    width: "100%",
+    maxWidth: "100%",
+    overflowX: "hidden"
   },
   header: {
     display: "grid",
-    gap: "0.5rem"
+    gap: "0.5rem",
+    minWidth: 0
   },
   eyebrow: {
     margin: 0,
@@ -37,6 +41,8 @@ const styles = {
   },
   title: {
     margin: 0,
+    minWidth: 0,
+    overflowWrap: "anywhere",
     fontSize: "2.4rem",
     lineHeight: 1,
     letterSpacing: "-0.06em"
@@ -50,29 +56,36 @@ const styles = {
   card: {
     display: "grid",
     gap: "0.85rem",
+    minWidth: 0,
     border: "1px solid var(--border)",
     borderRadius: "var(--radius-xl)",
     background: "var(--surface)",
     padding: "1rem",
     boxShadow: "var(--shadow-soft)"
   },
-  label: {
+  currentRoutineCard: {
     display: "grid",
-    gap: "0.45rem",
-    color: "var(--muted)",
-    fontSize: "0.88rem",
-    fontWeight: 850
-  },
-  select: {
-    minHeight: "3.2rem",
-    width: "100%",
+    gap: "0.4rem",
     border: "1px solid var(--border)",
     borderRadius: "var(--radius-lg)",
-    background: "rgba(255, 255, 255, 0.62)",
-    color: "var(--foreground)",
-    padding: "0 0.9rem",
-    fontSize: "1rem",
-    fontWeight: 850
+    background: "rgba(255, 255, 255, 0.48)",
+    padding: "0.9rem"
+  },
+  currentRoutineLabel: {
+    margin: 0,
+    color: "var(--muted)",
+    fontSize: "0.78rem",
+    fontWeight: 900,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase"
+  },
+  currentRoutineTitle: {
+    margin: 0,
+    minWidth: 0,
+    overflowWrap: "anywhere",
+    fontSize: "1.1rem",
+    fontWeight: 950,
+    letterSpacing: "-0.03em"
   },
   buttonPrimary: {
     display: "flex",
@@ -107,9 +120,11 @@ const styles = {
   meta: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
-    gap: "0.75rem"
+    gap: "0.75rem",
+    minWidth: 0
   },
   metaItem: {
+    minWidth: 0,
     border: "1px solid var(--border)",
     borderRadius: "var(--radius-lg)",
     background: "rgba(255, 255, 255, 0.42)",
@@ -117,6 +132,8 @@ const styles = {
   },
   metaValue: {
     margin: 0,
+    minWidth: 0,
+    overflowWrap: "anywhere",
     fontSize: "1.25rem",
     fontWeight: 900
   },
@@ -169,16 +186,6 @@ export function MainMenu() {
     [selectedRoutine]
   );
 
-  function handleRoutineChange(event: ChangeEvent<HTMLSelectElement>): void {
-    const nextRoutineId = event.currentTarget.value;
-
-    setSelectedRoutineId(nextRoutineId);
-
-    if (nextRoutineId) {
-      saveSelectedRoutineId(nextRoutineId);
-    }
-  }
-
   function handleStartRoutine(): void {
     if (!selectedRoutine) {
       return;
@@ -200,25 +207,15 @@ export function MainMenu() {
       </header>
 
       <section style={styles.card} aria-label="Menú principal">
-        {routines.length > 0 ? (
-          <label style={styles.label}>
-            Rutina
-            <select
-              value={selectedRoutineId}
-              style={styles.select}
-              onChange={handleRoutineChange}
-            >
-              {routines.map((routine) => (
-                <option key={routine.id} value={routine.id}>
-                  {routine.title}
-                </option>
-              ))}
-            </select>
-          </label>
+        {selectedRoutine ? (
+          <section style={styles.currentRoutineCard}>
+            <p style={styles.currentRoutineLabel}>Rutina seleccionada</p>
+            <p style={styles.currentRoutineTitle}>{selectedRoutine.title}</p>
+          </section>
         ) : (
           <p style={styles.emptyText}>
-            Todavía no tenés rutinas creadas. Creá tu primera rutina para
-            comenzar.
+            Todavía no tenés rutinas creadas. Entrá en Mis rutinas para crear o
+            importar una.
           </p>
         )}
 
@@ -231,8 +228,8 @@ export function MainMenu() {
           Comenzar rutina
         </button>
 
-        <Link href="/routines/new" style={styles.linkSecondary}>
-          Crear rutina
+        <Link href="/routines" style={styles.linkSecondary}>
+          Mis rutinas
         </Link>
 
         <Link href="/stats" style={styles.linkSecondary}>

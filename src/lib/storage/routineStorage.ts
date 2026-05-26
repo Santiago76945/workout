@@ -1,158 +1,48 @@
 // src/lib/storage/routineStorage.ts
 
-import { exerciseIds, type ExerciseId } from "@/types/exercise";
+import {
+  createId,
+  getRestSecondsBetweenSetsFromRecord,
+  isExerciseId,
+  isIntegerInRange,
+  isRecord,
+  isString,
+  normalizeRestSecondsBetweenSets,
+  normalizeRoutineTargetForExercise,
+  normalizeRoutineTitle,
+  normalizeSets,
+  normalizeText,
+  parseRoutineTargetForExercise,
+  routineValidationLimits
+} from "@/lib/routine/routineValidation";
+import { localStorageKeys } from "@/lib/storage/localStorageKeys";
 import type {
   CreateRoutineInput,
   CreateRoutineItemInput,
   Routine,
-  RoutineDurationTarget,
-  RoutineItem,
-  RoutineRepetitionTarget,
-  RoutineTarget
+  RoutineItem
 } from "@/types/routine";
 
-import { localStorageKeys } from "@/lib/storage/localStorageKeys";
-
-const minSets = 1;
-const maxSets = 99;
-const defaultSets = 3;
-
-const minRepetitions = 1;
-const maxRepetitions = 999;
-const minDurationSeconds = 1;
-const maxDurationSeconds = 3600;
-const minRestSeconds = 0;
-const maxRestSeconds = 3600;
-
-const defaultRoutineTitle = "Mi rutina";
-const defaultUnitLabel = "repeticiones";
-
-const validExerciseIds = new Set<ExerciseId>(exerciseIds);
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function createEmptyRoutineList(): Routine[] {
+  return [];
 }
 
-function isString(value: unknown): value is string {
-  return typeof value === "string";
-}
-
-function isExerciseId(value: unknown): value is ExerciseId {
-  return isString(value) && validExerciseIds.has(value as ExerciseId);
-}
-
-function isIntegerInRange(
-  value: unknown,
-  minValue: number,
-  maxValue: number
-): value is number {
-  return (
-    typeof value === "number" &&
-    Number.isInteger(value) &&
-    value >= minValue &&
-    value <= maxValue
-  );
-}
-
-function clampInteger(
-  value: number,
-  minValue: number,
-  maxValue: number,
-  fallbackValue: number
-): number {
-  if (!Number.isFinite(value)) {
-    return fallbackValue;
+function readRawUserRoutines(): unknown {
+  if (typeof window === "undefined") {
+    return createEmptyRoutineList();
   }
 
-  const roundedValue = Math.round(value);
+  const rawValue = window.localStorage.getItem(localStorageKeys.userRoutines);
 
-  return Math.min(Math.max(roundedValue, minValue), maxValue);
-}
-
-function normalizeText(value: string, fallbackValue: string): string {
-  const normalizedValue = value.trim();
-
-  return normalizedValue.length > 0 ? normalizedValue : fallbackValue;
-}
-
-function createId(prefix: string): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return `${prefix}-${crypto.randomUUID()}`;
+  if (!rawValue) {
+    return createEmptyRoutineList();
   }
 
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-function isRoutineRepetitionTarget(
-  value: unknown
-): value is RoutineRepetitionTarget {
-  if (!isRecord(value)) {
-    return false;
+  try {
+    return JSON.parse(rawValue) as unknown;
+  } catch {
+    return createEmptyRoutineList();
   }
-
-  return (
-    value.type === "repetitions" &&
-    isIntegerInRange(value.repetitions, minRepetitions, maxRepetitions) &&
-    isString(value.unitLabel)
-  );
-}
-
-function isRoutineDurationTarget(value: unknown): value is RoutineDurationTarget {
-  if (!isRecord(value)) {
-    return false;
-  }
-
-  return (
-    value.type === "duration" &&
-    isIntegerInRange(value.seconds, minDurationSeconds, maxDurationSeconds)
-  );
-}
-
-function isRoutineTarget(value: unknown): value is RoutineTarget {
-  return isRoutineRepetitionTarget(value) || isRoutineDurationTarget(value);
-}
-
-function normalizeRoutineTarget(target: RoutineTarget): RoutineTarget {
-  if (target.type === "duration") {
-    return {
-      type: "duration",
-      seconds: clampInteger(
-        target.seconds,
-        minDurationSeconds,
-        maxDurationSeconds,
-        minDurationSeconds
-      )
-    };
-  }
-
-  return {
-    type: "repetitions",
-    repetitions: clampInteger(
-      target.repetitions,
-      minRepetitions,
-      maxRepetitions,
-      minRepetitions
-    ),
-    unitLabel: normalizeText(target.unitLabel, defaultUnitLabel)
-  };
-}
-
-function getRestSecondsBetweenSets(value: Record<string, unknown>): number {
-  if (
-    isIntegerInRange(
-      value.restSecondsBetweenSets,
-      minRestSeconds,
-      maxRestSeconds
-    )
-  ) {
-    return value.restSecondsBetweenSets;
-  }
-
-  if (isIntegerInRange(value.restSecondsAfter, minRestSeconds, maxRestSeconds)) {
-    return value.restSecondsAfter;
-  }
-
-  return minRestSeconds;
 }
 
 function parseRoutineItem(value: unknown): RoutineItem | null {
@@ -160,24 +50,30 @@ function parseRoutineItem(value: unknown): RoutineItem | null {
     return null;
   }
 
-  if (
-    !isString(value.id) ||
-    !isExerciseId(value.exerciseId) ||
-    !isRoutineTarget(value.target)
-  ) {
+  if (!isString(value.id) || !isExerciseId(value.exerciseId)) {
     return null;
   }
 
-  const sets = isIntegerInRange(value.sets, minSets, maxSets)
+  const target = parseRoutineTargetForExercise(value.exerciseId, value.target);
+
+  if (!target) {
+    return null;
+  }
+
+  const sets = isIntegerInRange(
+    value.sets,
+    routineValidationLimits.sets.min,
+    routineValidationLimits.sets.max
+  )
     ? value.sets
-    : defaultSets;
+    : routineValidationLimits.sets.defaultValue;
 
   return {
     id: value.id,
     exerciseId: value.exerciseId,
     sets,
-    target: normalizeRoutineTarget(value.target),
-    restSecondsBetweenSets: getRestSecondsBetweenSets(value)
+    target,
+    restSecondsBetweenSets: getRestSecondsBetweenSetsFromRecord(value)
   };
 }
 
@@ -202,7 +98,7 @@ function parseRoutine(value: unknown): Routine | null {
 
   return {
     id: value.id,
-    title: normalizeText(value.title, defaultRoutineTitle),
+    title: normalizeRoutineTitle(value.title),
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
     items
@@ -215,13 +111,13 @@ function normalizeRoutineItemInput(
   return {
     id: createId("routine-item"),
     exerciseId: itemInput.exerciseId,
-    sets: clampInteger(itemInput.sets, minSets, maxSets, defaultSets),
-    target: normalizeRoutineTarget(itemInput.target),
-    restSecondsBetweenSets: clampInteger(
-      itemInput.restSecondsBetweenSets,
-      minRestSeconds,
-      maxRestSeconds,
-      minRestSeconds
+    sets: normalizeSets(itemInput.sets),
+    target: normalizeRoutineTargetForExercise(
+      itemInput.exerciseId,
+      itemInput.target
+    ),
+    restSecondsBetweenSets: normalizeRestSecondsBetweenSets(
+      itemInput.restSecondsBetweenSets
     )
   };
 }
@@ -230,37 +126,25 @@ function normalizeRoutineItem(item: RoutineItem): RoutineItem {
   return {
     id: normalizeText(item.id, createId("routine-item")),
     exerciseId: item.exerciseId,
-    sets: clampInteger(item.sets, minSets, maxSets, defaultSets),
-    target: normalizeRoutineTarget(item.target),
-    restSecondsBetweenSets: clampInteger(
-      item.restSecondsBetweenSets,
-      minRestSeconds,
-      maxRestSeconds,
-      minRestSeconds
+    sets: normalizeSets(item.sets),
+    target: normalizeRoutineTargetForExercise(item.exerciseId, item.target),
+    restSecondsBetweenSets: normalizeRestSecondsBetweenSets(
+      item.restSecondsBetweenSets
     )
   };
 }
 
-function createEmptyRoutineList(): Routine[] {
-  return [];
-}
-
-function readRawUserRoutines(): unknown {
-  if (typeof window === "undefined") {
-    return createEmptyRoutineList();
-  }
-
-  const rawValue = window.localStorage.getItem(localStorageKeys.userRoutines);
-
-  if (!rawValue) {
-    return createEmptyRoutineList();
-  }
-
-  try {
-    return JSON.parse(rawValue) as unknown;
-  } catch {
-    return createEmptyRoutineList();
-  }
+function createRoutineFromInput(
+  input: CreateRoutineInput,
+  now: string
+): Routine {
+  return {
+    id: createId("routine"),
+    title: normalizeRoutineTitle(input.title),
+    createdAt: now,
+    updatedAt: now,
+    items: input.items.map((itemInput) => normalizeRoutineItemInput(itemInput))
+  };
 }
 
 export function getUserRoutines(): Routine[] {
@@ -304,19 +188,29 @@ export function getRoutineById(routineId: string): Routine | null {
 export function createRoutine(input: CreateRoutineInput): Routine {
   const now = new Date().toISOString();
   const routines = getUserRoutines();
-
-  const routine: Routine = {
-    id: createId("routine"),
-    title: normalizeText(input.title, defaultRoutineTitle),
-    createdAt: now,
-    updatedAt: now,
-    items: input.items.map((itemInput) => normalizeRoutineItemInput(itemInput))
-  };
+  const routine = createRoutineFromInput(input, now);
 
   saveUserRoutines([...routines, routine]);
   saveSelectedRoutineId(routine.id);
 
   return routine;
+}
+
+export function createRoutines(inputs: CreateRoutineInput[]): Routine[] {
+  if (inputs.length === 0) {
+    return [];
+  }
+
+  const now = new Date().toISOString();
+  const routines = getUserRoutines();
+  const importedRoutines = inputs.map((input) =>
+    createRoutineFromInput(input, now)
+  );
+
+  saveUserRoutines([...routines, ...importedRoutines]);
+  saveSelectedRoutineId(importedRoutines[0]?.id ?? routines[0]?.id ?? "");
+
+  return importedRoutines;
 }
 
 export function updateRoutine(routine: Routine): Routine | null {
@@ -337,7 +231,7 @@ export function updateRoutine(routine: Routine): Routine | null {
 
   const updatedRoutine: Routine = {
     id: previousRoutine.id,
-    title: normalizeText(routine.title, defaultRoutineTitle),
+    title: normalizeRoutineTitle(routine.title),
     createdAt: previousRoutine.createdAt,
     updatedAt: new Date().toISOString(),
     items: routine.items.map((item) => normalizeRoutineItem(item))
@@ -387,7 +281,7 @@ export function getSelectedRoutineId(): string | null {
 }
 
 export function saveSelectedRoutineId(routineId: string): void {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || routineId.length === 0) {
     return;
   }
 

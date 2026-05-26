@@ -13,6 +13,7 @@ const styles = {
   card: {
     display: "grid",
     gap: "1rem",
+    minWidth: 0,
     border: "1px solid var(--border)",
     borderRadius: "var(--radius-xl)",
     background: "var(--surface)",
@@ -22,6 +23,8 @@ const styles = {
   },
   title: {
     margin: 0,
+    minWidth: 0,
+    overflowWrap: "anywhere",
     fontSize: "2rem",
     letterSpacing: "-0.06em"
   },
@@ -61,6 +64,10 @@ export function RoutineComplete({ onRestart }: RoutineCompleteProps) {
       <button type="button" style={styles.button} onClick={onRestart}>
         Repetir rutina
       </button>
+
+      <Link href="/routines" style={styles.link}>
+        Elegir otra rutina
+      </Link>
 
       <Link href="/stats" style={styles.link}>
         Ver estadísticas

@@ -27,12 +27,14 @@
 
 html {
     min-height: 100%;
+    overflow-x: hidden;
     background: var(--background);
 }
 
 body {
     min-height: 100vh;
     margin: 0;
+    overflow-x: hidden;
     color: var(--foreground);
     background:
         radial-gradient(circle at top left, rgba(255, 255, 255, 0.85), transparent 32rem),
@@ -70,8 +72,10 @@ img {
 
 main {
     width: min(100%, var(--max-app-width));
+    max-width: var(--max-app-width);
     min-height: 100vh;
     margin: 0 auto;
+    overflow-x: clip;
     padding: 1rem;
 }
 

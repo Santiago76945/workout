@@ -31,6 +31,8 @@ export type ExerciseCategory =
 
 export type ExerciseEquipment = "bodyweight" | "chair" | "pilates-ring";
 
+export type ExerciseSetTargetType = "repetitions" | "duration";
+
 export type ExerciseWorkedMuscles = {
   primary: string[];
   secondary: string[];
@@ -45,4 +47,5 @@ export type Exercise = {
   instruction: string;
   workedMuscles: ExerciseWorkedMuscles;
   positions: ExercisePosition[];
+  setTargetType?: ExerciseSetTargetType;
 };

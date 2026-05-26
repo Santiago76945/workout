@@ -6,8 +6,9 @@ import type { CSSProperties } from "react";
 
 import type { DraftRoutineItem } from "@/components/routines/RoutineForm";
 import { exercises } from "@/data/exercises";
+import { getExerciseSetTargetType } from "@/lib/routine/exerciseSetTarget";
+import { routineValidationLimits } from "@/lib/routine/routineValidation";
 import type { ExerciseId } from "@/types/exercise";
-import type { RoutineTarget } from "@/types/routine";
 
 type RoutineItemEditorProps = {
   item: DraftRoutineItem;
@@ -80,6 +81,12 @@ const styles = {
     fontSize: "0.95rem",
     fontWeight: 850
   },
+  helperText: {
+    margin: 0,
+    color: "var(--muted)",
+    fontSize: "0.82rem",
+    lineHeight: 1.4
+  },
   removeButton: {
     minHeight: "2.9rem",
     width: "100%",
@@ -91,16 +98,19 @@ const styles = {
   }
 } satisfies Record<string, CSSProperties>;
 
-function parseNumberInput(value: number, fallbackValue: number): number {
+function parseNumberInput(
+  value: number,
+  fallbackValue: number,
+  minValue: number,
+  maxValue: number
+): number {
   if (!Number.isFinite(value)) {
     return fallbackValue;
   }
 
-  return Math.round(value);
-}
+  const roundedValue = Math.round(value);
 
-function parseTargetType(value: string): RoutineTarget["type"] {
-  return value === "duration" ? "duration" : "repetitions";
+  return Math.min(Math.max(roundedValue, minValue), maxValue);
 }
 
 function parseExerciseId(value: string): ExerciseId {
@@ -120,6 +130,11 @@ export function RoutineItemEditor({
 }: RoutineItemEditorProps) {
   const isFirstItem = itemIndex === 0;
   const isLastItem = itemIndex === totalItems - 1;
+  const targetType = getExerciseSetTargetType(item.exerciseId);
+  const targetHelperText =
+    targetType === "duration"
+      ? "Este ejercicio se mide en segundos por serie."
+      : "Este ejercicio se mide en repeticiones por serie.";
 
   return (
     <article style={styles.card}>
@@ -172,72 +187,39 @@ export function RoutineItemEditor({
           </select>
         </label>
 
+        <p style={styles.helperText}>{targetHelperText}</p>
+
         <div style={styles.twoColumns}>
           <label style={styles.label}>
             Series
             <input
               type="number"
-              min={1}
-              max={99}
+              min={routineValidationLimits.sets.min}
+              max={routineValidationLimits.sets.max}
               step={1}
               value={item.sets}
               style={styles.input}
               onChange={(event) => {
                 onChange({
                   ...item,
-                  sets: parseNumberInput(event.currentTarget.valueAsNumber, 1)
+                  sets: parseNumberInput(
+                    event.currentTarget.valueAsNumber,
+                    routineValidationLimits.sets.defaultValue,
+                    routineValidationLimits.sets.min,
+                    routineValidationLimits.sets.max
+                  )
                 });
               }}
             />
           </label>
 
-          <label style={styles.label}>
-            Tipo de objetivo
-            <select
-              value={item.targetType}
-              style={styles.input}
-              onChange={(event) => {
-                onChange({
-                  ...item,
-                  targetType: parseTargetType(event.currentTarget.value)
-                });
-              }}
-            >
-              <option value="repetitions">Repeticiones</option>
-              <option value="duration">Segundos</option>
-            </select>
-          </label>
-        </div>
-
-        <div style={styles.twoColumns}>
-          {item.targetType === "repetitions" ? (
-            <label style={styles.label}>
-              Repeticiones por serie
-              <input
-                type="number"
-                min={1}
-                max={999}
-                step={1}
-                value={item.repetitions}
-                style={styles.input}
-                onChange={(event) => {
-                  onChange({
-                    ...item,
-                    repetitions: parseNumberInput(
-                      event.currentTarget.valueAsNumber,
-                      1
-                    )
-                  });
-                }}
-              />
-            </label>
-          ) : (
+          {targetType === "duration" ? (
             <label style={styles.label}>
               Segundos por serie
               <input
                 type="number"
-                min={1}
-                max={3600}
+                min={routineValidationLimits.durationSeconds.min}
+                max={routineValidationLimits.durationSeconds.max}
                 step={1}
                 value={item.durationSeconds}
                 style={styles.input}
@@ -246,35 +228,62 @@ export function RoutineItemEditor({
                     ...item,
                     durationSeconds: parseNumberInput(
                       event.currentTarget.valueAsNumber,
-                      30
+                      routineValidationLimits.durationSeconds.defaultValue,
+                      routineValidationLimits.durationSeconds.min,
+                      routineValidationLimits.durationSeconds.max
+                    )
+                  });
+                }}
+              />
+            </label>
+          ) : (
+            <label style={styles.label}>
+              Repeticiones por serie
+              <input
+                type="number"
+                min={routineValidationLimits.repetitions.min}
+                max={routineValidationLimits.repetitions.max}
+                step={1}
+                value={item.repetitions}
+                style={styles.input}
+                onChange={(event) => {
+                  onChange({
+                    ...item,
+                    repetitions: parseNumberInput(
+                      event.currentTarget.valueAsNumber,
+                      routineValidationLimits.repetitions.defaultValue,
+                      routineValidationLimits.repetitions.min,
+                      routineValidationLimits.repetitions.max
                     )
                   });
                 }}
               />
             </label>
           )}
-
-          <label style={styles.label}>
-            Descanso después de cada serie
-            <input
-              type="number"
-              min={0}
-              max={3600}
-              step={1}
-              value={item.restSecondsBetweenSets}
-              style={styles.input}
-              onChange={(event) => {
-                onChange({
-                  ...item,
-                  restSecondsBetweenSets: parseNumberInput(
-                    event.currentTarget.valueAsNumber,
-                    0
-                  )
-                });
-              }}
-            />
-          </label>
         </div>
+
+        <label style={styles.label}>
+          Descanso después de cada serie
+          <input
+            type="number"
+            min={routineValidationLimits.restSeconds.min}
+            max={routineValidationLimits.restSeconds.max}
+            step={1}
+            value={item.restSecondsBetweenSets}
+            style={styles.input}
+            onChange={(event) => {
+              onChange({
+                ...item,
+                restSecondsBetweenSets: parseNumberInput(
+                  event.currentTarget.valueAsNumber,
+                  routineValidationLimits.restSeconds.defaultValue,
+                  routineValidationLimits.restSeconds.min,
+                  routineValidationLimits.restSeconds.max
+                )
+              });
+            }}
+          />
+        </label>
 
         <button
           type="button"
