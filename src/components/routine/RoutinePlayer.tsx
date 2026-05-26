@@ -8,7 +8,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ExerciseCard } from "@/components/routine/ExerciseCard";
 import { RoutineComplete } from "@/components/routine/RoutineComplete";
-import { defaultRoutine } from "@/data/routines";
 import { buildRoutineSteps } from "@/lib/routine/buildRoutineSteps";
 import {
   getCurrentRoutineStep,
@@ -19,7 +18,12 @@ import {
   isRoutineComplete,
   shouldFlipExerciseCard
 } from "@/lib/routine/routineProgress";
+import {
+  clearSelectedRoutineId,
+  getSelectedRoutine
+} from "@/lib/storage/routineStorage";
 import { registerCompletedTrainingSession } from "@/lib/storage/trainingStatsStorage";
+import type { Routine } from "@/types/routine";
 
 const styles = {
   wrapper: {
@@ -55,17 +59,63 @@ const styles = {
     borderRadius: "999px",
     background: "var(--primary)",
     transition: "width 180ms ease"
+  },
+  emptyCard: {
+    display: "grid",
+    gap: "1rem",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-xl)",
+    background: "var(--surface)",
+    padding: "1rem",
+    boxShadow: "var(--shadow-soft)",
+    textAlign: "center"
+  },
+  emptyTitle: {
+    margin: 0,
+    fontSize: "1.7rem",
+    letterSpacing: "-0.05em"
+  },
+  emptyText: {
+    margin: 0,
+    color: "var(--muted)",
+    lineHeight: 1.5
+  },
+  linkButton: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "3.2rem",
+    borderRadius: "999px",
+    background: "var(--primary)",
+    color: "var(--primary-foreground)",
+    fontWeight: 900
+  },
+  secondaryLink: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "3.2rem",
+    border: "1px solid var(--border)",
+    borderRadius: "999px",
+    background: "rgba(255, 255, 255, 0.55)",
+    fontWeight: 900
   }
 } satisfies Record<string, CSSProperties>;
 
 export function RoutinePlayer() {
-  const steps = useMemo(() => buildRoutineSteps(defaultRoutine), []);
   const timeoutRef = useRef<number | null>(null);
   const hasRegisteredCompletionRef = useRef(false);
 
+  const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null);
+  const [hasLoadedRoutine, setHasLoadedRoutine] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isFlipping, setIsFlipping] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+
+  const steps = useMemo(
+    () => (selectedRoutine ? buildRoutineSteps(selectedRoutine) : []),
+    [selectedRoutine]
+  );
 
   const currentStep = getCurrentRoutineStep(steps, currentStepIndex);
   const progressPercentage = getRoutineProgressPercentage(
@@ -73,6 +123,28 @@ export function RoutinePlayer() {
     currentStepIndex
   );
   const stepCounterLabel = getStepCounterLabel(steps, currentStepIndex);
+
+  useEffect(() => {
+    const routine = getSelectedRoutine();
+
+    if (!routine) {
+      clearSelectedRoutineId();
+    }
+
+    setSelectedRoutine(routine);
+    setHasLoadedRoutine(true);
+  }, []);
+
+  useEffect(() => {
+    if (timeoutRef.current !== null) {
+      window.clearTimeout(timeoutRef.current);
+    }
+
+    hasRegisteredCompletionRef.current = false;
+    setCurrentStepIndex(0);
+    setIsComplete(false);
+    setIsFlipping(false);
+  }, [selectedRoutine?.id]);
 
   useEffect(() => {
     return () => {
@@ -83,15 +155,15 @@ export function RoutinePlayer() {
   }, []);
 
   function completeRoutine(): void {
-    if (hasRegisteredCompletionRef.current) {
+    if (!selectedRoutine || hasRegisteredCompletionRef.current) {
       return;
     }
 
     hasRegisteredCompletionRef.current = true;
 
     registerCompletedTrainingSession({
-      routineId: defaultRoutine.id,
-      routineTitle: defaultRoutine.title
+      routineId: selectedRoutine.id,
+      routineTitle: selectedRoutine.title
     });
 
     setCurrentStepIndex(steps.length);
@@ -144,6 +216,60 @@ export function RoutinePlayer() {
     setIsFlipping(false);
   }
 
+  if (!hasLoadedRoutine) {
+    return (
+      <main style={styles.wrapper}>
+        <section style={styles.emptyCard}>
+          <h1 style={styles.emptyTitle}>Cargando rutina</h1>
+          <p style={styles.emptyText}>Preparando tu entrenamiento.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (!selectedRoutine) {
+    return (
+      <main style={styles.wrapper}>
+        <section style={styles.emptyCard}>
+          <h1 style={styles.emptyTitle}>No hay rutina seleccionada</h1>
+          <p style={styles.emptyText}>
+            Elegí una rutina desde el menú o creá una nueva para comenzar.
+          </p>
+
+          <Link href="/routines/new" style={styles.linkButton}>
+            Crear rutina
+          </Link>
+
+          <Link href="/" style={styles.secondaryLink}>
+            Volver al menú
+          </Link>
+        </section>
+      </main>
+    );
+  }
+
+  if (steps.length === 0) {
+    return (
+      <main style={styles.wrapper}>
+        <section style={styles.emptyCard}>
+          <h1 style={styles.emptyTitle}>Rutina vacía</h1>
+          <p style={styles.emptyText}>
+            Esta rutina no tiene ejercicios. Creá una rutina nueva con al menos
+            un ejercicio.
+          </p>
+
+          <Link href="/routines/new" style={styles.linkButton}>
+            Crear rutina
+          </Link>
+
+          <Link href="/" style={styles.secondaryLink}>
+            Volver al menú
+          </Link>
+        </section>
+      </main>
+    );
+  }
+
   if (isComplete || !currentStep) {
     return (
       <main style={styles.wrapper}>
@@ -159,7 +285,7 @@ export function RoutinePlayer() {
           Volver
         </Link>
 
-        <h1 style={styles.title}>{defaultRoutine.title}</h1>
+        <h1 style={styles.title}>{selectedRoutine.title}</h1>
       </header>
 
       <div

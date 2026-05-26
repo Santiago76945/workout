@@ -19,7 +19,6 @@ type ExerciseImageCarouselProps = {
 const fallbackPosition: ExercisePosition = {
   id: "fallback-position",
   title: "Imagen no disponible",
-  description: ["Todavía no hay imagen para esta posición."],
   imagePath: fallbackExerciseImagePath
 };
 
@@ -39,22 +38,6 @@ const styles = {
   },
   image: {
     objectFit: "cover"
-  },
-  caption: {
-    display: "grid",
-    gap: "0.35rem"
-  },
-  captionTitle: {
-    margin: 0,
-    fontSize: "0.95rem",
-    fontWeight: 900
-  },
-  list: {
-    margin: 0,
-    paddingLeft: "1.2rem",
-    color: "var(--muted)",
-    fontSize: "0.9rem",
-    lineHeight: 1.45
   },
   dots: {
     display: "flex",
@@ -118,7 +101,7 @@ export function ExerciseImageCarousel({
   }
 
   return (
-    <section style={styles.wrapper} aria-label="Carrusel de posiciones">
+    <section style={styles.wrapper} aria-label="Carrusel de imágenes">
       <div style={styles.imageFrame}>
         <Image
           src={imageSrc}
@@ -145,16 +128,6 @@ export function ExerciseImageCarousel({
           ))}
         </div>
       ) : null}
-
-      <div style={styles.caption}>
-        <p style={styles.captionTitle}>{activePosition.title}</p>
-
-        <ul style={styles.list}>
-          {activePosition.description.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </div>
     </section>
   );
 }

@@ -8,27 +8,21 @@ export const pilatesRingFrontPress: Exercise = {
   shortTitle: "Front Press",
   category: "chest",
   equipment: ["pilates-ring"],
+  instruction:
+    "Sostené el aro frente al pecho o al abdomen con los brazos extendidos de forma cómoda. Apretá el aro lentamente hacia adentro, activando pecho y brazos, y volvé a soltar la presión sin perder el control.",
+  workedMuscles: {
+    primary: ["pectorales"],
+    secondary: ["deltoides anteriores", "tríceps", "core"]
+  },
   positions: [
     {
       id: "pilates-ring-front-press-start",
       title: "Posición inicial",
-      description: [
-        "Aro frente al abdomen o pecho bajo",
-        "Brazos al frente",
-        "Postura recta"
-      ],
       imagePath: "/exercises/pilates-ring-front-press/01-start.png"
     },
     {
       id: "pilates-ring-front-press-press",
       title: "Presión",
-      description: [
-        "Apretar el aro lentamente",
-        "Pecho y brazos activos",
-        "Codos suaves",
-        "Core contraído",
-        "Respiración controlada"
-      ],
       imagePath: "/exercises/pilates-ring-front-press/02-press.png"
     }
   ]

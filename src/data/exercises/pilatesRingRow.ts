@@ -8,28 +8,21 @@ export const pilatesRingRow: Exercise = {
   shortTitle: "Ring Row",
   category: "back",
   equipment: ["pilates-ring"],
+  instruction:
+    "Sostené el aro frente al pecho con los hombros relajados y el torso estable. Llevá los codos hacia atrás como si quisieras juntar los omóplatos, manteniendo tensión en el aro y volviendo con control.",
+  workedMuscles: {
+    primary: ["romboides", "trapecio medio", "dorsal ancho"],
+    secondary: ["deltoides posteriores", "bíceps", "core"]
+  },
   positions: [
     {
       id: "pilates-ring-row-start",
       title: "Posición inicial",
-      description: [
-        "De pie",
-        "Aro frente al pecho",
-        "Brazos semiflexionados",
-        "Hombros relajados"
-      ],
       imagePath: "/exercises/pilates-ring-row/01-start.png"
     },
     {
       id: "pilates-ring-row-pull",
       title: "Tirón / apertura",
-      description: [
-        "Codos yendo hacia atrás",
-        "Omóplatos juntándose",
-        "Pecho abierto",
-        "Aro abriéndose con tensión",
-        "Pausa breve apretando espalda"
-      ],
       imagePath: "/exercises/pilates-ring-row/02-pull.png"
     }
   ]

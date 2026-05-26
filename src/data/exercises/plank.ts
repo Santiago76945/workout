@@ -8,16 +8,16 @@ export const plank: Exercise = {
   shortTitle: "Plancha",
   category: "core",
   equipment: ["bodyweight"],
+  instruction:
+    "Apoyá los antebrazos en el piso y mantené el cuerpo en línea recta desde la cabeza hasta los talones. Activá abdomen y glúteos, evitando que la cadera caiga o se eleve demasiado.",
+  workedMuscles: {
+    primary: ["recto abdominal", "transverso abdominal", "oblicuos"],
+    secondary: ["glúteos", "deltoides", "espalda baja"]
+  },
   positions: [
     {
       id: "plank-correct",
       title: "Posición correcta",
-      description: [
-        "Antebrazos en el piso",
-        "Cuerpo recto",
-        "Glúteos alineados",
-        "Abdomen firme"
-      ],
       imagePath: "/exercises/plank/01-correct.png"
     }
   ]

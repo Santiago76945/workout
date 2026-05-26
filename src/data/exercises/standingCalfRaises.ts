@@ -8,27 +8,21 @@ export const standingCalfRaises: Exercise = {
   shortTitle: "Calf Raises",
   category: "legs",
   equipment: ["bodyweight"],
+  instruction:
+    "Parate con la espalda estable y los pies apoyados en el suelo. Elevá los talones hasta quedar sobre la punta de los pies, contraé las pantorrillas arriba y bajá lentamente sin perder el equilibrio.",
+  workedMuscles: {
+    primary: ["gemelos", "sóleo"],
+    secondary: ["tibial posterior", "peroneos", "core"]
+  },
   positions: [
     {
       id: "standing-calf-raises-start",
       title: "Posición inicial",
-      description: [
-        "De pie",
-        "Talones apoyados",
-        "Espalda recta"
-      ],
       imagePath: "/exercises/standing-calf-raises/01-start.png"
     },
     {
       id: "standing-calf-raises-up",
       title: "Elevación",
-      description: [
-        "Subir talones",
-        "Peso sobre punta de pies",
-        "Tobillos extendidos",
-        "Pantorrillas contraídas",
-        "Equilibrio controlado"
-      ],
       imagePath: "/exercises/standing-calf-raises/02-up.png"
     }
   ]

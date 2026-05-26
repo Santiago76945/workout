@@ -8,28 +8,21 @@ export const standingPilatesRingKneePress: Exercise = {
   shortTitle: "Aro entre rodillas",
   category: "legs",
   equipment: ["pilates-ring"],
+  instruction:
+    "Colocá el aro entre las rodillas, mantené los pies paralelos y flexioná apenas las piernas. Apretá el aro hacia adentro con control, activando aductores y glúteos sin perder la postura estable.",
+  workedMuscles: {
+    primary: ["aductores", "glúteos"],
+    secondary: ["cuádriceps", "core", "isquiotibiales"]
+  },
   positions: [
     {
       id: "standing-pilates-ring-knee-press-start",
       title: "Posición inicial",
-      description: [
-        "De pie",
-        "Aro entre rodillas",
-        "Pies paralelos",
-        "Rodillas apenas flexionadas"
-      ],
       imagePath: "/exercises/standing-pilates-ring-knee-press/01-start.png"
     },
     {
       id: "standing-pilates-ring-knee-press-press",
       title: "Presión",
-      description: [
-        "Rodillas apretando hacia adentro",
-        "Glúteos y aductores activos",
-        "Aro comprimido",
-        "Postura estable",
-        "Core firme"
-      ],
       imagePath: "/exercises/standing-pilates-ring-knee-press/02-press.png"
     }
   ]

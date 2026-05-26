@@ -8,26 +8,21 @@ export const chairDips: Exercise = {
   shortTitle: "Fondos con silla",
   category: "arms",
   equipment: ["bodyweight", "chair"],
+  instruction:
+    "Apoyá las manos en el borde de la silla y dejá la cadera apenas por delante del asiento. Bajá el cuerpo flexionando los codos hacia atrás y empujá con los brazos para volver a subir, manteniendo el movimiento controlado.",
+  workedMuscles: {
+    primary: ["tríceps"],
+    secondary: ["pectorales", "deltoides anteriores", "core"]
+  },
   positions: [
     {
       id: "chair-dips-top",
       title: "Posición inicial",
-      description: [
-        "Manos apoyadas en borde de silla",
-        "Brazos extendidos",
-        "Cadera fuera de la silla",
-        "Piernas flexionadas o extendidas"
-      ],
       imagePath: "/exercises/chair-dips/01-top.png"
     },
     {
       id: "chair-dips-down",
       title: "Bajada",
-      description: [
-        "Codos doblándose hacia atrás",
-        "Cuerpo descendiendo recto",
-        "Hombros bajan hasta aproximadamente 90 grados"
-      ],
       imagePath: "/exercises/chair-dips/02-down.png"
     }
   ]

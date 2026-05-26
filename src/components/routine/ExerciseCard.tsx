@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ExerciseImageCarousel } from "@/components/routine/ExerciseImageCarousel";
 import { RestTimer } from "@/components/routine/RestTimer";
-import { RoutineStepText } from "@/components/routine/RoutineStepText";
+import { formatRoutineTarget } from "@/lib/routine/formatRoutineTarget";
 import type { RoutineStep } from "@/types/routine";
 
 type ExerciseCardProps = {
@@ -62,7 +62,7 @@ const styles = {
     lineHeight: 1.1,
     letterSpacing: "-0.055em"
   },
-  setPill: {
+  stepPill: {
     flexShrink: 0,
     border: "1px solid var(--border)",
     borderRadius: "999px",
@@ -74,6 +74,28 @@ const styles = {
   content: {
     display: "grid",
     gap: "1rem"
+  },
+  targetBox: {
+    display: "grid",
+    gap: "0.25rem",
+    border: "1px solid var(--border)",
+    borderRadius: "var(--radius-lg)",
+    background: "rgba(255, 255, 255, 0.48)",
+    padding: "0.85rem"
+  },
+  targetLabel: {
+    margin: 0,
+    color: "var(--muted)",
+    fontSize: "0.75rem",
+    fontWeight: 900,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase"
+  },
+  targetText: {
+    margin: 0,
+    fontSize: "1.05rem",
+    fontWeight: 900,
+    lineHeight: 1.25
   },
   button: {
     minHeight: "3.4rem",
@@ -122,6 +144,24 @@ export function ExerciseCard({
   const isRestStep = step.type === "rest";
   const isConfirmDisabled = isFlipping || (isRestStep && !isRestComplete);
 
+  const exerciseCounterLabel =
+    step.type === "exercise"
+      ? `Ejercicio ${step.exerciseStepNumber}/${step.totalExerciseSteps}`
+      : `Ejercicio ${step.afterExerciseStepNumber}/${step.totalExerciseSteps}`;
+
+  const setCounterLabel =
+    step.type === "exercise"
+      ? `Serie ${step.setNumber}/${step.totalSets}`
+      : `Descanso ${step.afterSetNumber}/${step.totalSets}`;
+
+  const targetLabel =
+    step.type === "exercise" ? "Objetivo por serie" : "Descanso";
+
+  const targetText =
+    step.type === "exercise"
+      ? formatRoutineTarget(step.target)
+      : `${remainingRestSeconds} segundos`;
+
   const buttonLabel = isFlipping
     ? "Cambiando ejercicio..."
     : isRestStep
@@ -136,7 +176,7 @@ export function ExerciseCard({
         ...styles.card,
         ...(isFlipping ? styles.cardFlipping : {})
       }}
-      aria-label={`Ejercicio actual. ${stepCounterLabel}. ${progressPercentage}% completado.`}
+      aria-label={`Paso actual. ${stepCounterLabel}. ${progressPercentage}% completado.`}
     >
       <header style={styles.header}>
         <p style={styles.counter}>{stepCounterLabel}</p>
@@ -144,21 +184,19 @@ export function ExerciseCard({
         <div style={styles.titleRow}>
           <h2 style={styles.title}>{step.exercise.title}</h2>
 
-          <span style={styles.setPill}>
-            {step.type === "exercise"
-              ? `Serie ${step.setNumber}/${step.totalSets}`
-              : `Descanso ${step.afterSetNumber}/${step.totalSets}`}
-          </span>
+          <span style={styles.stepPill}>{exerciseCounterLabel}</span>
         </div>
+
+        <p style={styles.counter}>{setCounterLabel}</p>
       </header>
 
       <div style={styles.content}>
         <ExerciseImageCarousel positions={step.exercise.positions} />
 
-        <RoutineStepText
-          step={step}
-          restSecondsRemaining={remainingRestSeconds}
-        />
+        <section style={styles.targetBox}>
+          <p style={styles.targetLabel}>{targetLabel}</p>
+          <p style={styles.targetText}>{targetText}</p>
+        </section>
 
         {isRestStep ? (
           <div style={styles.timerArea}>

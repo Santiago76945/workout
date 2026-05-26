@@ -8,27 +8,21 @@ export const pilatesRingOverheadPress: Exercise = {
   shortTitle: "Overhead Press",
   category: "shoulders",
   equipment: ["pilates-ring"],
+  instruction:
+    "Sostené el aro por encima de la cabeza con los codos apenas flexionados y los hombros lejos de las orejas. Apretá el aro hacia adentro con control, manteniendo el abdomen firme y la espalda neutra.",
+  workedMuscles: {
+    primary: ["deltoides", "trapecio superior"],
+    secondary: ["tríceps", "pectorales", "core"]
+  },
   positions: [
     {
       id: "pilates-ring-overhead-press-start",
       title: "Posición inicial",
-      description: [
-        "Aro arriba de la cabeza",
-        "Brazos elevados",
-        "Codos apenas flexionados"
-      ],
       imagePath: "/exercises/pilates-ring-overhead-press/01-start.png"
     },
     {
       id: "pilates-ring-overhead-press-press",
       title: "Presión",
-      description: [
-        "Apretar el aro hacia adentro",
-        "Mantener hombros bajos",
-        "Core firme",
-        "Presión sostenida",
-        "Espalda neutra"
-      ],
       imagePath: "/exercises/pilates-ring-overhead-press/02-press.png"
     }
   ]

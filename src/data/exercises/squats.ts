@@ -8,30 +8,21 @@ export const squats: Exercise = {
   shortTitle: "Sentadillas",
   category: "legs",
   equipment: ["bodyweight"],
+  instruction:
+    "Colocá los pies al ancho de hombros, llevá la cadera hacia atrás y bajá con control manteniendo la espalda estable. Empujá desde los talones para volver a subir, evitando que las rodillas colapsen hacia adentro.",
+  workedMuscles: {
+    primary: ["cuádriceps", "glúteos"],
+    secondary: ["isquiotibiales", "core", "pantorrillas"]
+  },
   positions: [
     {
       id: "squats-start",
       title: "Posición inicial",
-      description: [
-        "De pie",
-        "Pies al ancho de hombros",
-        "Punta de pies apenas hacia afuera",
-        "Espalda recta",
-        "Pecho abierto",
-        "Brazos al frente o cruzados"
-      ],
       imagePath: "/exercises/squats/01-start.png"
     },
     {
       id: "squats-down",
       title: "Bajada",
-      description: [
-        "Cadera hacia atrás como sentándose",
-        "Rodillas doblándose siguiendo la línea de los pies",
-        "Muslos acercándose a paralelo con el suelo",
-        "Talones apoyados",
-        "Tronco ligeramente inclinado pero recto"
-      ],
       imagePath: "/exercises/squats/02-down.png"
     }
   ]

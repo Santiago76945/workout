@@ -262,14 +262,22 @@ export default function StatsPage() {
   return <StatsDashboard />;
 }### Comandos
 
-# Unificar todo
+# Unificar todo sin content
 
 find src \
   ! -path "src/content/*" \
   \( -name "*.ts" -o -name "*.tsx" -o -name "*.css" -o -name "*.json" -o -name "*.md" \) \
   ! -name "*.d.ts" \
   -type f \
-  -print0 | xargs -0 cat > unificadoCodigo.cadmora.txt
+  -print0 | xargs -0 cat > unificadoCodigo.workout.txt
+
+  # Unificar todo con content
+
+  find src \
+  \( -name "*.ts" -o -name "*.tsx" -o -name "*.css" -o -name "*.json" -o -name "*.md" \) \
+  ! -name "*.d.ts" \
+  -type f \
+  -print0 | xargs -0 cat > unificadoCodigo.workout.txt
 
 # Unificar algunos files
 
@@ -326,7 +334,7 @@ npm run check // src/components/goals/GoalSettings.tsx
 "use client";
 
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import { useEffect, useState } from "react";
 
 import {
@@ -334,6 +342,11 @@ import {
   saveWeeklyGoalTarget
 } from "@/lib/storage/goalStorage";
 import type { WeeklyGoal } from "@/types/goal";
+
+const initialGoal: WeeklyGoal = {
+  targetSessionsPerWeek: 3,
+  updatedAt: ""
+};
 
 const styles = {
   wrapper: {
@@ -405,9 +418,9 @@ const styles = {
 } satisfies Record<string, CSSProperties>;
 
 export function GoalSettings() {
-  const [goal, setGoal] = useState<WeeklyGoal>(() => getWeeklyGoal());
+  const [goal, setGoal] = useState<WeeklyGoal>(initialGoal);
   const [targetSessionsPerWeek, setTargetSessionsPerWeek] = useState(
-    goal.targetSessionsPerWeek
+    initialGoal.targetSessionsPerWeek
   );
 
   useEffect(() => {
@@ -417,7 +430,7 @@ export function GoalSettings() {
     setTargetSessionsPerWeek(storedGoal.targetSessionsPerWeek);
   }, []);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
+  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
 
     const updatedGoal = saveWeeklyGoalTarget(targetSessionsPerWeek);
@@ -432,6 +445,7 @@ export function GoalSettings() {
         <Link href="/" style={styles.backLink}>
           Volver
         </Link>
+
         <h1 style={styles.title}>Objetivo</h1>
       </header>
 
@@ -511,37 +525,47 @@ export function RestTimer({
 }: RestTimerProps) {
   const [remainingSeconds, setRemainingSeconds] = useState(durationSeconds);
   const hasCompletedRef = useRef(false);
+  const onTickRef = useRef(onTick);
+  const onCompleteRef = useRef(onComplete);
 
   useEffect(() => {
-    setRemainingSeconds(durationSeconds);
-    onTick(durationSeconds);
+    onTickRef.current = onTick;
+  }, [onTick]);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  useEffect(() => {
     hasCompletedRef.current = false;
-  }, [durationSeconds, onTick]);
+    setRemainingSeconds(durationSeconds);
+    onTickRef.current(durationSeconds);
+  }, [durationSeconds]);
 
   useEffect(() => {
     if (remainingSeconds <= 0) {
       if (!hasCompletedRef.current) {
         hasCompletedRef.current = true;
-        onComplete();
+        onCompleteRef.current();
       }
 
       return undefined;
     }
 
     const timeoutId = window.setTimeout(() => {
-      setRemainingSeconds((currentRemainingSeconds) => {
-        const nextRemainingSeconds = Math.max(currentRemainingSeconds - 1, 0);
-
-        onTick(nextRemainingSeconds);
-
-        return nextRemainingSeconds;
-      });
+      setRemainingSeconds((currentRemainingSeconds) =>
+        Math.max(currentRemainingSeconds - 1, 0)
+      );
     }, 1000);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [remainingSeconds, onComplete, onTick]);
+  }, [remainingSeconds]);
+
+  useEffect(() => {
+    onTickRef.current(remainingSeconds);
+  }, [remainingSeconds]);
 
   return (
     <div style={styles.timer} aria-label={`Descanso: ${remainingSeconds}`}>
@@ -612,6 +636,7 @@ const styles = {
 export function RoutinePlayer() {
   const steps = useMemo(() => buildRoutineSteps(defaultRoutine), []);
   const timeoutRef = useRef<number | null>(null);
+  const hasRegisteredCompletionRef = useRef(false);
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isFlipping, setIsFlipping] = useState(false);
@@ -633,6 +658,12 @@ export function RoutinePlayer() {
   }, []);
 
   function completeRoutine(): void {
+    if (hasRegisteredCompletionRef.current) {
+      return;
+    }
+
+    hasRegisteredCompletionRef.current = true;
+
     registerCompletedTrainingSession({
       routineId: defaultRoutine.id,
       routineTitle: defaultRoutine.title
@@ -647,7 +678,11 @@ export function RoutinePlayer() {
   }
 
   function handleConfirmStep(): void {
-    if (isComplete || isRoutineComplete(steps, currentStepIndex)) {
+    if (
+      isComplete ||
+      isFlipping ||
+      isRoutineComplete(steps, currentStepIndex)
+    ) {
       return;
     }
 
@@ -674,6 +709,11 @@ export function RoutinePlayer() {
   }
 
   function handleRestartRoutine(): void {
+    if (timeoutRef.current !== null) {
+      window.clearTimeout(timeoutRef.current);
+    }
+
+    hasRegisteredCompletionRef.current = false;
     setCurrentStepIndex(0);
     setIsComplete(false);
     setIsFlipping(false);
@@ -693,6 +733,7 @@ export function RoutinePlayer() {
         <Link href="/" style={styles.backLink}>
           Volver
         </Link>
+
         <h1 style={styles.title}>{defaultRoutine.title}</h1>
       </header>
 
@@ -722,7 +763,7 @@ export function RoutinePlayer() {
 "use client";
 
 import type { CSSProperties } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { ExerciseImageCarousel } from "@/components/routine/ExerciseImageCarousel";
 import { RestTimer } from "@/components/routine/RestTimer";
@@ -834,14 +875,20 @@ export function ExerciseCard({
     setIsRestComplete(true);
   }, [step]);
 
-  const isRestStep = step.type === "rest";
-  const isConfirmDisabled = isRestStep && !isRestComplete;
+  const handleRestComplete = useCallback(() => {
+    setIsRestComplete(true);
+  }, []);
 
-  const buttonLabel = isRestStep
-    ? isRestComplete
-      ? "Confirmar descanso"
-      : "Esperá a que termine el descanso"
-    : "Confirmar serie";
+  const isRestStep = step.type === "rest";
+  const isConfirmDisabled = isFlipping || (isRestStep && !isRestComplete);
+
+  const buttonLabel = isFlipping
+    ? "Cambiando ejercicio..."
+    : isRestStep
+      ? isRestComplete
+        ? "Confirmar descanso"
+        : "Esperá a que termine el descanso"
+      : "Confirmar serie";
 
   return (
     <section
@@ -879,9 +926,7 @@ export function ExerciseCard({
               key={step.id}
               durationSeconds={step.durationSeconds}
               onTick={setRemainingRestSeconds}
-              onComplete={() => {
-                setIsRestComplete(true);
-              }}
+              onComplete={handleRestComplete}
             />
           </div>
         ) : null}
@@ -1031,6 +1076,7 @@ export function RoutineStepText({
 
 "use client";
 
+import Image from "next/image";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -1066,8 +1112,6 @@ const styles = {
     background: "rgba(255, 255, 255, 0.45)"
   },
   image: {
-    height: "100%",
-    width: "100%",
     objectFit: "cover"
   },
   caption: {
@@ -1150,11 +1194,14 @@ export function ExerciseImageCarousel({
   return (
     <section style={styles.wrapper} aria-label="Carrusel de posiciones">
       <div style={styles.imageFrame}>
-        <img
+        <Image
           src={imageSrc}
           alt={activePosition.title}
+          fill
+          sizes="(max-width: 480px) 100vw, 480px"
           style={styles.image}
           onError={handleImageError}
+          priority={false}
         />
       </div>
 
@@ -1346,6 +1393,11 @@ const emptyStats: TrainingStats = {
   sessions: []
 };
 
+const initialGoal: WeeklyGoal = {
+  targetSessionsPerWeek: 3,
+  updatedAt: ""
+};
+
 const styles = {
   wrapper: {
     display: "grid",
@@ -1440,7 +1492,7 @@ const styles = {
 
 export function StatsDashboard() {
   const [stats, setStats] = useState<TrainingStats>(emptyStats);
-  const [goal, setGoal] = useState<WeeklyGoal>(() => getWeeklyGoal());
+  const [goal, setGoal] = useState<WeeklyGoal>(initialGoal);
 
   useEffect(() => {
     setStats(getTrainingStats());
@@ -1467,6 +1519,7 @@ export function StatsDashboard() {
         <Link href="/" style={styles.backLink}>
           Volver
         </Link>
+
         <h1 style={styles.title}>Estadísticas</h1>
       </header>
 
@@ -1812,57 +1865,43 @@ export function isLastStep(
   return currentStepIndex === steps.length - 1;
 }// src/lib/routine/buildRoutineSteps.ts
 
-import type { Exercise, ExerciseId } from "@/types/exercise";
+import { getExerciseById } from "@/data/exercises";
+import type { Routine, RoutineStep } from "@/types/routine";
 
-import { chairDips } from "@/data/exercises/chairDips";
-import { pilatesRingFrontPress } from "@/data/exercises/pilatesRingFrontPress";
-import { pilatesRingOverheadPress } from "@/data/exercises/pilatesRingOverheadPress";
-import { pilatesRingRow } from "@/data/exercises/pilatesRingRow";
-import { plank } from "@/data/exercises/plank";
-import { pushUps } from "@/data/exercises/pushUps";
-import { squats } from "@/data/exercises/squats";
-import { standingCalfRaises } from "@/data/exercises/standingCalfRaises";
-import { standingPilatesRingKneePress } from "@/data/exercises/standingPilatesRingKneePress";
+export function buildRoutineSteps(routine: Routine): RoutineStep[] {
+  return routine.items.flatMap((item) => {
+    const exercise = getExerciseById(item.exerciseId);
+    const steps: RoutineStep[] = [];
 
-export const exercises = [
-  squats,
-  pushUps,
-  pilatesRingRow,
-  chairDips,
-  pilatesRingOverheadPress,
-  pilatesRingFrontPress,
-  plank,
-  standingPilatesRingKneePress,
-  standingCalfRaises
-] satisfies Exercise[];
+    for (let setNumber = 1; setNumber <= item.sets; setNumber += 1) {
+      steps.push({
+        id: `${item.id}-set-${setNumber}`,
+        type: "exercise",
+        exerciseId: item.exerciseId,
+        exercise,
+        setNumber,
+        totalSets: item.sets,
+        target: item.target
+      });
 
-export const exercisesById = {
-  squats,
-  "push-ups": pushUps,
-  "pilates-ring-row": pilatesRingRow,
-  "chair-dips": chairDips,
-  "pilates-ring-overhead-press": pilatesRingOverheadPress,
-  "pilates-ring-front-press": pilatesRingFrontPress,
-  plank,
-  "standing-pilates-ring-knee-press": standingPilatesRingKneePress,
-  "standing-calf-raises": standingCalfRaises
-} satisfies Record<ExerciseId, Exercise>;
+      const shouldAddRestStep = setNumber < item.sets;
 
-export function getExerciseById(exerciseId: ExerciseId): Exercise {
-  return exercisesById[exerciseId];
-}
+      if (shouldAddRestStep) {
+        steps.push({
+          id: `${item.id}-rest-after-set-${setNumber}`,
+          type: "rest",
+          exerciseId: item.exerciseId,
+          exercise,
+          durationSeconds: item.restSeconds,
+          afterSetNumber: setNumber,
+          totalSets: item.sets
+        });
+      }
+    }
 
-export {
-  chairDips,
-  pilatesRingFrontPress,
-  pilatesRingOverheadPress,
-  pilatesRingRow,
-  plank,
-  pushUps,
-  squats,
-  standingCalfRaises,
-  standingPilatesRingKneePress
-};// src/lib/storage/trainingStatsStorage.ts
+    return steps;
+  });
+}// src/lib/storage/trainingStatsStorage.ts
 
 import { getLocalDateKey } from "@/lib/dates/dateKeys";
 import { localStorageKeys } from "@/lib/storage/localStorageKeys";
@@ -2762,10 +2801,6 @@ export const pilatesRingFrontPress: Exercise = {
       imagePath: "/exercises/pilates-ring-front-press/02-press.png"
     }
   ]
-};import type { Routine } from "@/types/routine";
+};// src/data/defaultRoutine.ts
 
-export const defaultRoutine: Routine = {
-  id: "default-routine",
-  title: "Rutina principal",
-  items: [],
-};
+export { defaultRoutine } from "@/data/routines";

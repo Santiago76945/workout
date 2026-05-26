@@ -1,20 +1,22 @@
 // src/types/exercise.ts
 
-export type ExerciseId =
-  | "squats"
-  | "push-ups"
-  | "pilates-ring-row"
-  | "chair-dips"
-  | "pilates-ring-overhead-press"
-  | "pilates-ring-front-press"
-  | "plank"
-  | "standing-pilates-ring-knee-press"
-  | "standing-calf-raises";
+export const exerciseIds = [
+  "squats",
+  "push-ups",
+  "pilates-ring-row",
+  "chair-dips",
+  "pilates-ring-overhead-press",
+  "pilates-ring-front-press",
+  "plank",
+  "standing-pilates-ring-knee-press",
+  "standing-calf-raises"
+] as const;
+
+export type ExerciseId = (typeof exerciseIds)[number];
 
 export type ExercisePosition = {
   id: string;
   title: string;
-  description: string[];
   imagePath: string;
 };
 
@@ -27,10 +29,12 @@ export type ExerciseCategory =
   | "core"
   | "full-body";
 
-export type ExerciseEquipment =
-  | "bodyweight"
-  | "chair"
-  | "pilates-ring";
+export type ExerciseEquipment = "bodyweight" | "chair" | "pilates-ring";
+
+export type ExerciseWorkedMuscles = {
+  primary: string[];
+  secondary: string[];
+};
 
 export type Exercise = {
   id: ExerciseId;
@@ -38,5 +42,7 @@ export type Exercise = {
   shortTitle: string;
   category: ExerciseCategory;
   equipment: ExerciseEquipment[];
+  instruction: string;
+  workedMuscles: ExerciseWorkedMuscles;
   positions: ExercisePosition[];
 };

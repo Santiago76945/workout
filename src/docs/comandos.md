@@ -1,9 +1,17 @@
 ### Comandos
 
-# Unificar todo
+# Unificar todo sin content
 
 find src \
   ! -path "src/content/*" \
+  \( -name "*.ts" -o -name "*.tsx" -o -name "*.css" -o -name "*.json" -o -name "*.md" \) \
+  ! -name "*.d.ts" \
+  -type f \
+  -print0 | xargs -0 cat > unificadoCodigo.workout.txt
+
+  # Unificar todo con content
+
+  find src \
   \( -name "*.ts" -o -name "*.tsx" -o -name "*.css" -o -name "*.json" -o -name "*.md" \) \
   ! -name "*.d.ts" \
   -type f \

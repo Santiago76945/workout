@@ -207,8 +207,8 @@ export function StatsDashboard() {
         </section>
       </section>
 
-      <Link href="/routine" style={styles.linkButton}>
-        Comenzar rutina
+      <Link href="/" style={styles.linkButton}>
+        Volver al menú
       </Link>
     </main>
   );
